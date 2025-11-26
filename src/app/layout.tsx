@@ -1,3 +1,7 @@
+import DevtoolsPrevent from "@/contexts/DevtoolsPrevent";
+import SessionProvider from "@/contexts/SessionProvider";
+import SnackbarProvider from "@/contexts/SnackbarProvider";
+import Theme from "@/theme/Theme";
 import type { Metadata } from "next";
 import { ReactNode } from "react";
 
@@ -10,7 +14,15 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode;
     return (
         <html lang="id">
             <body>
-                {children}
+                <Theme>
+                    <SnackbarProvider>
+                        <SessionProvider>
+                            {/* <DevtoolsPrevent> */}
+                                {children}
+                            {/* </DevtoolsPrevent> */}
+                        </SessionProvider>
+                    </SnackbarProvider>
+                </Theme>
             </body>
         </html>
     );
