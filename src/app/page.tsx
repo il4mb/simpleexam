@@ -23,14 +23,7 @@ export default function Home() {
     ];
 
     return (
-        <Box
-            sx={{
-                minHeight: '100vh',
-                background: 'linear-gradient(45deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-                position: 'relative',
-                overflow: 'hidden',
-                fontFamily: '"Inter", sans-serif'
-            }}>
+        <Box>
             {/* Animated Background Particles */}
             {floatingShapes.map((shape, index) => (
                 <MotionBox

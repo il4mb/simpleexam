@@ -2,8 +2,6 @@ export type User = {
     id: string;
     name: string;
     avatar: string;
-    isOnline?: boolean;
-    lastSeen?: number;
     color?: string;
 }
 
@@ -13,7 +11,7 @@ export interface RoomData {
     id: string;
     name: string;
     type: RoomType;
-    status: 'waiting' | 'playing' | 'ended' | 'closed';
+    status: 'waiting' | 'playing' | 'ended' | 'paused';
     createdAt: Date;
     createdBy: string;
     maxPlayers: number;

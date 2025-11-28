@@ -1,16 +1,16 @@
-// contexts/QuestionsProvider.tsx
+"use client"
 import { createContext, useContext, useCallback, useMemo, ReactNode, useEffect } from 'react';
 import { Question } from '@/types';
 import { ydoc, mainPersistence } from '@/libs/yjs';
 import * as Y from 'yjs';
-import { useRoomManager } from './RoomManager';
-import { useYArray } from '@/hooks/useYArray';
+import { useYArray } from '@/hooks/useY';
 import { nanoid } from 'nanoid';
+import QuizProvider from './QuizProvider';
 
 
 interface QuestionsContextType {
     questions: Question[];
-    addQuestion: (text: string) => string|undefined;
+    addQuestion: (text: string) => string | undefined;
     removeQuestion: (id: string) => void;
     updateQuestion: (id: string, updates: Partial<Question>) => void;
     reorder: (newOrder: Question[]) => void;
@@ -34,22 +34,19 @@ export function useQuestions() {
 
 interface QuestionsProviderProps {
     children: ReactNode;
+    yRoom: Y.Map<unknown>;
 }
 
-export default function QuestionsProvider({ children }: QuestionsProviderProps) {
+export default function QuestionsProvider({ children, yRoom }: QuestionsProviderProps) {
 
-    const { yMap } = useRoomManager();
-
-    // Yjs array for questions
     const yQuestions = useMemo(() => {
-        let arr = yMap.get('questions');
+        let arr = yRoom.get('questions');
         if (!arr) {
             arr = new Y.Array<Question>();
-            yMap.set('questions', arr);
+            yRoom.set('questions', arr);
         }
         return arr as Y.Array<Question>;
-    }, [yMap]);
-
+    }, [yRoom]);
     const questions = useYArray(yQuestions);
 
     const syncToLocal = useCallback(() => {
@@ -59,6 +56,8 @@ export default function QuestionsProvider({ children }: QuestionsProviderProps) 
     useEffect(() => {
         syncToLocal();
     }, [syncToLocal]);
+
+
 
     // Add new question
     const addQuestion = useCallback((text: string) => {
@@ -180,7 +179,9 @@ export default function QuestionsProvider({ children }: QuestionsProviderProps) 
 
     return (
         <QuestionsContext.Provider value={value}>
-            {children}
+            <QuizProvider yRoom={yRoom}>
+                {children}
+            </QuizProvider>
         </QuestionsContext.Provider>
     );
 }

@@ -1,29 +1,41 @@
 'use client'
 
-import { ReactNode, useCallback, useEffect, useMemo, useState, createContext, useContext } from 'react';
-import { useRoom } from './RoomProvider';
-import { useCurrentUser } from './SessionProvider';
+import { ReactNode, useMemo, createContext, useContext, useCallback, useEffect } from 'react';
+import { RoomData } from '@/types';
 import { ydoc } from '@/libs/yjs';
-import * as Y from 'yjs';
-import { RoomData, User } from '@/types';
-import { Box, Typography, Fade, Backdrop } from '@mui/material';
+import ParticipantsProvider from './ParticipantsProvider';
+import QuestionsProvider from './QuestionsProvider';
+import { useYMap } from '@/hooks/useY';
 
-export interface RoomManagerState {
-    yMap: Y.Map<unknown>;
-    room: RoomData;
-    participants: User[];
-    isUserInRoom: boolean;
-    participantCount: number;
-    removeUser: (userId: string) => void;
-    getParticipant: (userId: string) => User | undefined;
+function isJSONValue(v: any) {
+    return (
+        v === null ||
+        typeof v === "string" ||
+        typeof v === "number" ||
+        typeof v === "boolean" ||
+        (Array.isArray(v) && v.every(isJSONValue)) ||
+        (typeof v === "object" &&
+            v &&
+            !Array.isArray(v) &&
+            Object.values(v).every(isJSONValue))
+    );
+}
+
+
+export interface RoomManagerState<T = any> {
+    room: RoomData & T;
+    isHost: boolean;
+    updateRoom: <K extends keyof RoomData>(key: K, value: RoomData[K]) => void;
 }
 
 export interface RoomManagerProps {
     children?: ReactNode;
+    roomData: RoomData;
+    isHost: boolean;
 }
 
-const RoomManagerContext = createContext<RoomManagerState | undefined>(undefined);
-export function useRoomManager(): RoomManagerState {
+const RoomManagerContext = createContext<RoomManagerState<any> | undefined>(undefined);
+export function useRoomManager<T>(): RoomManagerState<T> {
     const context = useContext(RoomManagerContext);
     if (context === undefined) {
         throw new Error('useRoomManager must be used within a RoomManagerProvider');
@@ -31,124 +43,47 @@ export function useRoomManager(): RoomManagerState {
     return context;
 }
 
-export default function RoomManagerProvider({ children }: RoomManagerProps) {
-    const user = useCurrentUser();
-    const { room } = useRoom();
+export default function RoomManagerProvider({ children, roomData, isHost }: RoomManagerProps) {
 
-    const yMap = useMemo(() => {
-        return ydoc.getMap(room.id);
-    }, [room.id]);
-
-    const [participants, setParticipants] = useState<User[]>([]);
-    const yParticipants = useMemo(() => {
-        let arr = yMap.get("participants");
-        if (!arr) {
-            arr = new Y.Array<User>();
-            yMap.set("participants", arr);
-        }
-        return arr as Y.Array<User>;
-    }, [yMap]);
-
-    const removeUserFromParticipants = useCallback(() => {
-        if (!user) return;
+    const yRoom = useMemo(() => {
+        const map = ydoc.getMap(roomData.id);
 
         ydoc.transact(() => {
-            const users = yParticipants.toArray();
-            const userIndex = users.findIndex(u => u.id === user.id);
-            if (userIndex !== -1) {
-                yParticipants.delete(userIndex, 1);
-                console.log(`User ${user.id} removed from participants (tab closed)`);
+            for (const [k, v] of Object.entries(roomData)) {
+                try {
+                    const current = map.get(k);
+                    if (current !== undefined) continue;
+                    map.set(k, v);
+                } catch (error) {
+                    console.log("Skipped", k, error);
+                }
             }
         });
-    }, [user, yParticipants]);
 
-    const removeUser = useCallback((userId: string) => {
+        return map;
+    }, [roomData.id]);
+    const room = useYMap<RoomData>(yRoom as any);
+
+    const updateRoom = useCallback<RoomManagerState['updateRoom']>((key, value) => {
+        if (!isHost) return;
         ydoc.transact(() => {
-            const users = yParticipants.toArray();
-            const userIndex = users.findIndex(u => u.id === userId);
-            if (userIndex !== -1) {
-                yParticipants.delete(userIndex, 1);
-                console.log(`User ${userId} removed by manager`);
-            }
+            yRoom.set(key, value);
         });
-    }, [yParticipants]);
+    }, [yRoom, isHost]);
 
-    const getParticipant = useCallback((userId: string): User | undefined => {
-        return participants.find(participant => participant.id === userId);
-    }, [participants]);
-
-    useEffect(() => {
-        if (!user) return;
-
-        const addUserToParticipants = () => {
-            const existingUsers = yParticipants.toArray();
-            const userExists = existingUsers.some(existingUser =>
-                existingUser.id === user.id
-            );
-
-            if (!userExists) {
-                ydoc.transact(() => {
-                    yParticipants.push([user]);
-                });
-                console.log(`User ${user.id} added to participants`);
-            }
-        };
-
-        // Add user immediately
-        addUserToParticipants();
-
-        // Handle tab/window close
-        const handleBeforeUnload = () => {
-            removeUserFromParticipants();
-        };
-
-        // Handle browser/tab close
-        window.addEventListener('beforeunload', handleBeforeUnload);
-
-        // Cleanup on unmount
-        return () => {
-            removeUserFromParticipants();
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-        };
-    }, [user, yParticipants, removeUserFromParticipants]);
-
-    useEffect(() => {
-        const updateParticipants = () => {
-            try {
-                const currentParticipants = yParticipants.toArray();
-                console.log('Participants updated:', currentParticipants);
-                setParticipants(currentParticipants);
-            } catch (error) {
-                console.error('Error updating participants:', error);
-            }
-        };
-
-        // Initial load
-        updateParticipants();
-
-        // Observe changes
-        yParticipants.observe(updateParticipants);
-
-        // Cleanup observer
-        return () => {
-            yParticipants.unobserve(updateParticipants);
-        };
-    }, [yParticipants]);
-
-    // State value untuk context
-    const contextValue: RoomManagerState = useMemo(() => ({
-        room,
-        yMap,
-        participants,
-        isUserInRoom: user ? participants.some(p => p.id === user.id) : false,
-        participantCount: participants.length,
-        removeUser,
-        getParticipant,
-    }), [participants, room, user, yMap, removeUser, getParticipant]);
+    const contextValue = useMemo<RoomManagerState>(() => ({
+        room: room,
+        isHost,
+        updateRoom,
+    }), [room, isHost, updateRoom]);
 
     return (
         <RoomManagerContext.Provider value={contextValue}>
-            {children}
+            <ParticipantsProvider yRoom={yRoom}>
+                <QuestionsProvider yRoom={yRoom}>
+                    {children}
+                </QuestionsProvider>
+            </ParticipantsProvider>
         </RoomManagerContext.Provider>
     );
 }

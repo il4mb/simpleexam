@@ -54,6 +54,14 @@ export const surfacesCustomizations: Components<Theme> = {
     MuiPaper: {
         defaultProps: {
             elevation: 0,
+            sx: (theme) => ({
+                "--paper-s-c": "#000",
+                borderRadius: 0.4,
+                boxShadow: "0px 0px 0px 1px var(--paper-s-c), -6px 6px 0px var(--paper-s-c)",
+                ...theme.applyStyles("dark", {
+                    "--paper-s-c": "#fff",
+                })
+            })
         },
     },
     MuiCard: {

@@ -409,7 +409,7 @@ export const typography = {
 };
 
 export const shape = {
-	borderRadius: 6,
+	borderRadius: 0.4,
 };
 
 // @ts-ignore
