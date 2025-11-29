@@ -15,7 +15,8 @@ export default function SnackbarProvider({ children }: SnackbarProviderProps) {
                 vertical: "top",
                 horizontal: "center"
             }}
-            action={SnackbarAction}>
+            action={SnackbarAction}
+            preventDuplicate>
             {children}
         </NotiStackSnackbar>
     );

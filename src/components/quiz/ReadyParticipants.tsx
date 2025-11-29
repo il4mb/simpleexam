@@ -276,31 +276,7 @@ export default function ReadyParticipants() {
                     </Box>
                 )}
 
-                {/* Empty State */}
-                {filteredParticipants.length === 0 && (
-                    <MotionBox
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                        style={{ 
-                            textAlign: 'center',
-                            py: 4
-                        }}>
-                        <EmojiEvents 
-                            sx={{ 
-                                fontSize: 64, 
-                                color: 'grey.400',
-                                mb: 2
-                            }} 
-                        />
-                        <Typography variant="h6" color="text.secondary" gutterBottom>
-                            Belum ada peserta yang siap
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            Tunggu hingga peserta menekan tombol "Siap"
-                        </Typography>
-                    </MotionBox>
-                )}
+         
             </Stack>
         </MotionBox>
     );

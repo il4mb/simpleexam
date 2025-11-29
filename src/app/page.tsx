@@ -1,6 +1,6 @@
 'use client'
 
-import { Container, Stack, TextField, Typography, Box } from "@mui/material";
+import { Container, Stack, TextField, Typography, Box, Paper } from "@mui/material";
 import { Rocket, Timeline, Gamepad, Stars, FlashOn, AcUnit } from "@mui/icons-material";
 import { useState } from "react";
 import CreateRoom from "@/components/CreateRoom";
@@ -24,7 +24,6 @@ export default function Home() {
 
     return (
         <Box>
-            {/* Animated Background Particles */}
             {floatingShapes.map((shape, index) => (
                 <MotionBox
                     key={index}
@@ -53,8 +52,6 @@ export default function Home() {
                     {shape.icon}
                 </MotionBox>
             ))}
-
-            {/* Main Content */}
             <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 2 }}>
                 <Box sx={{
                     minHeight: '100vh',
@@ -74,7 +71,6 @@ export default function Home() {
                             </Stack>
                         )}
 
-                        {/* Animated Header */}
                         <MotionBox
                             initial={{ scale: 0.8, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
@@ -92,14 +88,8 @@ export default function Home() {
                                     textShadow: '0 0 30px rgba(255,255,255,0.3)',
                                     mb: 2
                                 }}>
-                                Quezy
+                                EduDoExam | Quiz
                             </Typography>
-
-                            <MotionBox
-                                animate={{ y: [0, -10, 0] }}
-                                transition={{ duration: 2, repeat: Infinity }}>
-                                <Rocket sx={{ fontSize: 60, color: '#FFD166', mb: 2 }} />
-                            </MotionBox>
 
                             <Typography
                                 variant="h5"
@@ -114,52 +104,16 @@ export default function Home() {
                         </MotionBox>
 
                         {/* Interactive Main Card */}
-                        <MotionPaper
+                        <MotionBox
                             initial={{ y: 100, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             transition={{ duration: 0.8, delay: 0.3 }}
                             onHoverStart={() => setIsHovered(true)}
                             onHoverEnd={() => setIsHovered(false)}
-                            sx={{
-                                p: { xs: 3, md: 5 },
-                                width: '100%',
-                                maxWidth: 500,
-                                textAlign: 'center',
-                                borderRadius: 4,
-                                background: 'rgba(255,255,255,0.1)',
-                                backdropFilter: 'blur(20px)',
-                                border: '2px solid rgba(255,255,255,0.2)',
-                                boxShadow: '0 25px 50px rgba(0,0,0,0.2)',
-                                position: 'relative',
-                                overflow: 'hidden'
-                            }}>
-                            {/* Animated Border */}
-                            <MotionBox
-                                sx={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    right: 0,
-                                    height: '4px',
-                                    background: 'linear-gradient(90deg, #FF6B6B, #4ECDC4, #FFD166)'
-                                }}
-                                animate={{
-                                    backgroundPosition: ['0%', '200%']
-                                }}
-                                transition={{
-                                    duration: 2,
-                                    repeat: Infinity,
-                                    ease: "linear"
-                                }}
-                            />
+                            sx={{ p: 10 }}>
 
                             <Stack spacing={4}>
-                                {/* Create Exam Button */}
-
-
                                 <CreateRoom />
-
-                                {/* Join Section */}
                                 <MotionBox
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -253,7 +207,8 @@ export default function Home() {
                                     </Box>
                                 </MotionBox>
                             </Stack>
-                        </MotionPaper>
+
+                        </MotionBox>
 
                         {/* Feature Highlights */}
                         <MotionBox

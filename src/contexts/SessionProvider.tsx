@@ -42,6 +42,9 @@ export default function SessionProvider({ children }: SessionProviderProps) {
 
     useEffect(() => {
         handleSyncUser();
+        return () => {
+            setUser(undefined);
+        }
     }, []);
 
     // Show loading state

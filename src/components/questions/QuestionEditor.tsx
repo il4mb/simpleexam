@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
     Stack,
     Typography,
@@ -11,32 +11,18 @@ import {
     IconButton,
 } from '@mui/material';
 import { Add, ExpandLess } from '@mui/icons-material';
-import { MotionBox, MotionStack } from '@/components/motion';
+import { MotionBox } from '@/components/motion';
 import { Reorder } from 'framer-motion';
 import QuestionCard from './QuestionCard';
 import { useQuestions } from '@/contexts/QuestionsProvider';
+import { Question } from '@/types';
+import { getColor } from '@/theme/colors';
 
 export interface QuizProps { }
 
 export default function QuestionEditor({ }: QuizProps) {
-    const {
-        questions,
-        addQuestion,
-        removeQuestion,
-        updateQuestionText,
-        updateOptionText,
-        addOption,
-        removeOption,
-        setCorrectAnswer,
-        updateDuration,
-        reorder
-    } = useQuestions();
-
-
-    useEffect(() => {
-        console.log(questions)
-    },[questions])
-
+    
+    const { questions, addQuestion, updateQuestion, removeQuestion, reorder } = useQuestions();
     const [expanded, setExpanded] = useState<string>();
     const [newQuestionText, setNewQuestionText] = useState<string>();
 
@@ -51,14 +37,18 @@ export default function QuestionEditor({ }: QuizProps) {
         setExpanded(prev => prev == id ? undefined : id);
     }
 
+
+    const handleQuestionChange = useCallback((id: string) => (patch: Partial<Question>) => {
+        updateQuestion(id, patch);
+    }, [updateQuestion]);
+
     // Calculate summary statistics
     const totalDuration = questions.reduce((total, q) => total + q.duration, 0);
     const totalOptions = questions.reduce((total, q) => total + (q.options?.length || 0), 0);
-    const questionsWithAnswers = questions.filter(q => q.correctAnswer !== undefined).length;
 
     return (
         <Stack spacing={3} mt={3}>
-      
+
             <Card variant="outlined" sx={{
                 borderRadius: 0.4,
                 bgcolor: 'background.default',
@@ -97,12 +87,7 @@ export default function QuestionEditor({ }: QuizProps) {
                                         variant="outlined"
                                     />
                                     <Chip
-                                        label={`${questionsWithAnswers}/${questions.length} Terisi`}
-                                        color={questionsWithAnswers === questions.length ? "success" : "warning"}
-                                        variant="outlined"
-                                    />
-                                    <Chip
-                                        label={`${totalOptions} Opsi`}
+                                        label={`${totalOptions} Pilihan`}
                                         color="info"
                                         variant="outlined"
                                     />
@@ -169,58 +154,44 @@ export default function QuestionEditor({ }: QuizProps) {
                 <MotionBox
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}>
-                    <Card variant="outlined" sx={{
-                        borderRadius: 0.4,
-                        border: 'none',
-                        boxShadow: "0px 0px 0px 1px currentColor, -6px 6px 0px currentColor"
-                    }}>
+                    <Card
+                        variant="outlined"
+                        sx={{
+                            borderRadius: 0.4,
+                            border: 'none',
+                            boxShadow: "0px 0px 0px 1px currentColor, -6px 6px 0px currentColor",
+                        }}>
                         <CardContent>
-                            <Stack>
-                                <Stack direction="row" alignItems="center" spacing={1} mb={3}>
-                                    <Typography variant="h6" fontWeight="bold">
-                                        Daftar Soal ({questions.length})
-                                    </Typography>
-                                    <Chip
-                                        label="Drag untuk mengurutkan"
-                                        size="small"
-                                        variant="outlined"
-                                        color="info"
-                                    />
-                                </Stack>
-
-                                <Reorder.Group
-                                    axis="y"
-                                    values={questions}
-                                    onReorder={reorder}
-                                    style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                    <MotionStack spacing={2}>
-                                        {questions.map((question, index) => (
-                                            <Reorder.Item key={question.id} value={question}>
-                                                <MotionBox
-                                                    initial={{ opacity: 0, y: 20 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ delay: index * 0.1 }}>
-                                                    <QuestionCard
-                                                        expanded={question.id == expanded}
-                                                        onExpand={handleExpanded(question.id)}
-                                                        question={question}
-                                                        index={index}
-                                                        onUpdateText={(text) => updateQuestionText(question.id, text)}
-                                                        onUpdateOption={(optionIndex, text) =>
-                                                            updateOptionText(question.id, optionIndex, text)
-                                                        }
-                                                        onAddOption={() => addOption(question.id)}
-                                                        onRemoveOption={(optionIndex) => removeOption(question.id, optionIndex)}
-                                                        onSetCorrectAnswer={(optionIndex) => setCorrectAnswer(question.id, optionIndex)}
-                                                        onUpdateDuration={(duration) => updateDuration(question.id, duration)}
-                                                        onRemove={() => removeQuestion(question.id)}
-                                                    />
-                                                </MotionBox>
-                                            </Reorder.Item>
-                                        ))}
-                                    </MotionStack>
-                                </Reorder.Group>
+                            <Stack direction="row" alignItems="center" spacing={1} mb={3}>
+                                <Typography variant="h6" fontWeight="bold">
+                                    Daftar Soal ({questions.length})
+                                </Typography>
                             </Stack>
+                            <Reorder.Group
+                                axis="y"
+                                values={questions}
+                                onReorder={reorder}
+                                style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                <Stack spacing={2}>
+                                    {questions.map((question, index) => (
+                                        <Reorder.Item key={question.id} value={question}>
+                                            <MotionBox
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: index * 0.1 }}>
+                                                <QuestionCard
+                                                    expanded={question.id == expanded}
+                                                    onExpand={handleExpanded(question.id)}
+                                                    question={question}
+                                                    index={index}
+                                                    onChange={handleQuestionChange(question.id)}
+                                                    onRemove={() => removeQuestion(question.id)}
+                                                />
+                                            </MotionBox>
+                                        </Reorder.Item>
+                                    ))}
+                                </Stack>
+                            </Reorder.Group>
                         </CardContent>
                     </Card>
                 </MotionBox>

@@ -7,21 +7,6 @@ import ParticipantsProvider from './ParticipantsProvider';
 import QuestionsProvider from './QuestionsProvider';
 import { useYMap } from '@/hooks/useY';
 
-function isJSONValue(v: any) {
-    return (
-        v === null ||
-        typeof v === "string" ||
-        typeof v === "number" ||
-        typeof v === "boolean" ||
-        (Array.isArray(v) && v.every(isJSONValue)) ||
-        (typeof v === "object" &&
-            v &&
-            !Array.isArray(v) &&
-            Object.values(v).every(isJSONValue))
-    );
-}
-
-
 export interface RoomManagerState<T = any> {
     room: RoomData & T;
     isHost: boolean;
@@ -47,21 +32,22 @@ export default function RoomManagerProvider({ children, roomData, isHost }: Room
 
     const yRoom = useMemo(() => {
         const map = ydoc.getMap(roomData.id);
-
-        ydoc.transact(() => {
-            for (const [k, v] of Object.entries(roomData)) {
-                try {
-                    const current = map.get(k);
-                    if (current !== undefined) continue;
-                    map.set(k, v);
-                } catch (error) {
-                    console.log("Skipped", k, error);
+        if (isHost) {
+            ydoc.transact(() => {
+                for (const [k, v] of Object.entries(roomData)) {
+                    try {
+                        const current = map.get(k);
+                        if (current !== undefined) continue;
+                        map.set(k, v);
+                    } catch (error) {
+                        console.log("Skipped", k, error);
+                    }
                 }
-            }
-        });
+            });
+        }
 
         return map;
-    }, [roomData.id]);
+    }, [roomData.id, isHost]);
     const room = useYMap<RoomData>(yRoom as any);
 
     const updateRoom = useCallback<RoomManagerState['updateRoom']>((key, value) => {

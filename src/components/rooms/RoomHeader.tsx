@@ -3,7 +3,7 @@
 import { MotionPaper, MotionBox } from '@/components/motion';
 import { useRoomManager } from '@/contexts/RoomManager';
 import { RocketLaunch, Share, Settings, QrCode, Pause, PlayArrow, Stop } from '@mui/icons-material';
-import { Box, Button, Chip, Stack, Typography, IconButton, alpha, Container } from '@mui/material';
+import { Box, Button, Chip, Stack, Typography, IconButton, alpha, Container, CircularProgress } from '@mui/material';
 import { Crown } from 'lucide-react';
 import { useTheme } from '@mui/material/styles';
 import { useCallback, useState } from 'react';
@@ -61,24 +61,32 @@ export default function RoomHeader({ }: QuizHeaderProps) {
     };
 
     const handleStartQuiz = useCallback(() => {
-        updateRoom("status", "playing");
-        enqueueSnackbar("Kuis dimulai!", { variant: "success" });
-    }, []);
+        updateRoom("status", "prepared");
+        enqueueSnackbar("Memulai kuis...!", { variant: "success" });
+    }, [room.status]);
 
     const handlePauseQuiz = useCallback(() => {
+        if (room.status == "prepared") {
+            enqueueSnackbar("Tidak dapat menjeda quiz.", { variant: "warning" });
+            return;
+        }
         updateRoom("status", "paused");
         enqueueSnackbar("Kuis dijeda", { variant: "info" });
-    }, []);
+    }, [room.status]);
 
     const handleResumeQuiz = useCallback(() => {
+        if (room.status == "prepared") {
+            enqueueSnackbar("Tidak dapat menjeda quiz.", { variant: "warning" });
+            return;
+        }
         updateRoom("status", "playing");
         enqueueSnackbar("Kuis dilanjutkan", { variant: "success" });
-    }, []);
+    }, [room.status]);
 
     const handleEndQuiz = useCallback(() => {
         updateRoom("status", "ended");
         enqueueSnackbar("Kuis diakhiri", { variant: "info" });
-    }, []);
+    }, [room.status]);
 
     const getMainActionButton = () => {
         switch (room.status) {
@@ -181,6 +189,17 @@ export default function RoomHeader({ }: QuizHeaderProps) {
                         Mulai Ulang Kuis
                     </Button>
                 );
+            case "prepared":
+                return (
+                    <Button
+                        variant="outlined"
+                        color='secondary'
+                        size="large"
+                        disabled
+                        startIcon={<CircularProgress size={20} />}>
+                        Mempersiapkan...
+                    </Button>
+                );
 
             default:
                 return null;
@@ -188,7 +207,7 @@ export default function RoomHeader({ }: QuizHeaderProps) {
     };
 
     const getSecondaryActionButton = () => {
-        if (room.status === 'playing' || room.status === 'paused') {
+        if (room.status === 'playing' || room.status === 'paused' || room.status === 'prepared') {
             return (
                 <Button
                     onClick={handleEndQuiz}

@@ -11,7 +11,7 @@ export interface RoomData {
     id: string;
     name: string;
     type: RoomType;
-    status: 'waiting' | 'playing' | 'ended' | 'paused';
+    status: 'waiting' | 'prepared' | 'playing' | 'ended' | 'paused';
     createdAt: Date;
     createdBy: string;
     maxPlayers: number;
@@ -19,10 +19,24 @@ export interface RoomData {
     enableLeaderboard?: boolean;
 }
 
+export interface QuestionOption {
+    id: string;
+    text: string;
+    score?: number;
+    correct: boolean;
+}
 export interface Question {
     id: string;
     text: string;
-    options: string[];
+    multiple: boolean;
+    options: QuestionOption[];
     duration: number;
-    correctAnswer?: number;
+}
+
+export type Answer = {
+    uid: string;
+    questionId: string;
+    optionsId: string[];
+    timestamp: number;
+    timeSpent: number;
 }

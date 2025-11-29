@@ -1,6 +1,6 @@
 "use client"
 import { createContext, useContext, useCallback, useMemo, ReactNode, useEffect } from 'react';
-import { Question } from '@/types';
+import { Question, QuestionOption } from '@/types';
 import { ydoc, mainPersistence } from '@/libs/yjs';
 import * as Y from 'yjs';
 import { useYArray } from '@/hooks/useY';
@@ -14,12 +14,9 @@ interface QuestionsContextType {
     removeQuestion: (id: string) => void;
     updateQuestion: (id: string, updates: Partial<Question>) => void;
     reorder: (newOrder: Question[]) => void;
-    updateQuestionText: (id: string, text: string) => void;
-    updateOptionText: (questionId: string, optionIndex: number, text: string) => void;
+    updateOption: (questionId: string, optionId: string, patch: Partial<QuestionOption>) => void;
     addOption: (questionId: string) => void;
     removeOption: (questionId: string, optionIndex: number) => void;
-    setCorrectAnswer: (questionId: string, optionIndex: number) => void;
-    updateDuration: (questionId: string, duration: number) => void;
 }
 
 const QuestionsContext = createContext<QuestionsContextType | undefined>(undefined);
@@ -58,15 +55,15 @@ export default function QuestionsProvider({ children, yRoom }: QuestionsProvider
     }, [syncToLocal]);
 
 
-
     // Add new question
     const addQuestion = useCallback((text: string) => {
         if (!text.trim()) return;
         const id = nanoid();
         const newQuestion: Question = {
             id,
-            text: text.trim(),
-            options: ['', ''],
+            text: text.replace(/\s+$/, ' ').replace(/^\s+/, ''),
+            options: [{ id: nanoid(6), text: '', correct: true }, { id: nanoid(6), text: '', correct: false }],
+            multiple: false,
             duration: 30,
         };
 
@@ -106,18 +103,12 @@ export default function QuestionsProvider({ children, yRoom }: QuestionsProvider
             yQuestions.delete(0, yQuestions.length);
             yQuestions.insert(0, newOrder);
         });
-    }, [yQuestions]);
+    }, [yQuestions, questions]);
 
-    // Specific update functions for better performance
-    const updateQuestionText = useCallback((id: string, text: string) => {
-        updateQuestion(id, { text: text.trim() });
-    }, [updateQuestion]);
-
-    const updateOptionText = useCallback((questionId: string, optionIndex: number, text: string) => {
+    const updateOption = useCallback((questionId: string, optionId: string, patch: Partial<QuestionOption>) => {
         const question = questions.find(q => q.id === questionId);
         if (question) {
-            const newOptions = [...question.options];
-            newOptions[optionIndex] = text;
+            const newOptions = [...question.options].map(opt => opt.id == optionId ? { ...opt, ...patch } : opt);
             updateQuestion(questionId, { options: newOptions });
         }
     }, [questions, updateQuestion]);
@@ -125,7 +116,7 @@ export default function QuestionsProvider({ children, yRoom }: QuestionsProvider
     const addOption = useCallback((questionId: string) => {
         const question = questions.find(q => q.id === questionId);
         if (question && question.options.length < 6) {
-            updateQuestion(questionId, { options: [...question.options, ''] });
+            updateQuestion(questionId, { options: [...question.options, { id: nanoid(6), text: '', correct: false }] });
         }
     }, [questions, updateQuestion]);
 
@@ -133,23 +124,12 @@ export default function QuestionsProvider({ children, yRoom }: QuestionsProvider
         const question = questions.find(q => q.id === questionId);
         if (question && question.options.length > 2) {
             const newOptions = question.options.filter((_, idx) => idx !== optionIndex);
-            const newCorrectAnswer = question.correctAnswer === optionIndex ? undefined :
-                question.correctAnswer && question.correctAnswer > optionIndex ? question.correctAnswer - 1 : question.correctAnswer;
-
             updateQuestion(questionId, {
                 options: newOptions,
-                correctAnswer: newCorrectAnswer
             });
         }
     }, [questions, updateQuestion]);
 
-    const setCorrectAnswer = useCallback((questionId: string, optionIndex: number) => {
-        updateQuestion(questionId, { correctAnswer: optionIndex });
-    }, [updateQuestion]);
-
-    const updateDuration = useCallback((questionId: string, duration: number) => {
-        updateQuestion(questionId, { duration: Math.max(5, Math.min(300, duration)) });
-    }, [updateQuestion]);
 
     const value = useMemo(() => ({
         questions,
@@ -157,24 +137,18 @@ export default function QuestionsProvider({ children, yRoom }: QuestionsProvider
         removeQuestion,
         updateQuestion,
         reorder,
-        updateQuestionText,
-        updateOptionText,
+        updateOption,
         addOption,
-        removeOption,
-        setCorrectAnswer,
-        updateDuration,
+        removeOption
     }), [
         questions,
         addQuestion,
         removeQuestion,
         updateQuestion,
         reorder,
-        updateQuestionText,
-        updateOptionText,
+        updateOption,
         addOption,
         removeOption,
-        setCorrectAnswer,
-        updateDuration,
     ]);
 
     return (

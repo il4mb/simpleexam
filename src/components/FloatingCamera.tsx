@@ -1,10 +1,9 @@
 // FloatingCamera.tsx
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Box, CircularProgress, IconButton, Stack, Typography, Tooltip, Paper } from '@mui/material';
-import { CameraAlt, Close, Remove, Videocam, VideocamOff } from '@mui/icons-material';
+import { Remove, Videocam, VideocamOff } from '@mui/icons-material';
 import * as faceapi from 'face-api.js';
 import { MotionBox, MotionStack } from './motion'; // Assuming these are your custom wrappers
-import { Camera, Minimize } from 'lucide-react';
 
 export interface FloatingCameraProps {
     onExpressionDetected?: (expression: string, probability: number) => void;
@@ -28,7 +27,7 @@ export default function FloatingCamera({
     onExpressionDetected,
     onFaceDetected,
     onReady,
-    initialPosition = { x: window.innerWidth - 260, y: window.innerHeight - 260 } // Default bottom right
+    initialPosition = { x: window.innerWidth - 100, y: window.innerHeight - 100 }
 }: FloatingCameraProps) {
     // Refs
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -84,13 +83,14 @@ export default function FloatingCamera({
                 videoRef.current.onloadeddata = () => {
                     setIsLoading(false);
                     startDetectionLoop();
-                    onReady?.();
                 };
             }
         } catch (err) {
             console.error("Camera access denied:", err);
             setError("Camera access denied.");
             setIsLoading(false);
+        } finally {
+            onReady?.();
         }
     };
 
@@ -155,6 +155,10 @@ export default function FloatingCamera({
                 height: '100vh',
                 zIndex: 1300,
                 pointerEvents: 'none',
+                opacity: 0.4,
+                "&:hover": {
+                    opacity: 1
+                }
             }}>
             <MotionStack
                 drag

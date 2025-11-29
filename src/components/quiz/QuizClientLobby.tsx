@@ -1,218 +1,243 @@
-import { Stack, Typography, Box, CircularProgress, Button, useTheme } from '@mui/material';
-import { CheckCircle } from '@mui/icons-material';
-import { motion, AnimatePresence, Variants } from 'framer-motion';
-import FloatingCamera from '../FloatingCamera';
-import { useQuiz } from '@/hooks/useQuiz';
-import { useEffect, useMemo, useState } from 'react';
-import { useParticipants } from '@/hooks/useParticipants';
-import AvatarCompact from '../avatars/AvatarCompact';
+import { useQuestions } from '@/contexts/QuestionsProvider';
+import { useQuiz, useQuizQuestion } from '@/hooks/useQuiz';
+import {
+    Stack,
+    Typography,
+    Paper,
+    Box,
+    Chip,
+    LinearProgress,
+    Container,
+    alpha
+} from '@mui/material';
+import {
+    Timer,
+    LibraryAddCheck
+} from '@mui/icons-material';
+import { useCallback, useMemo, useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import { MotionBox, MotionStack, MotionTypography } from '../motion';
+import { ClockAlert } from 'lucide-react';
 import { getColor } from '@/theme/colors';
-import { useRoomManager } from '@/contexts/RoomManager';
-import { MotionBox } from '../motion';
-import ReadyParticipants from './ReadyParticipants';
+import QuizLeaderboards from './QuizLeaderboards';
+import { enqueueSnackbar } from 'notistack';
 
-export interface QuizLobbyProps {
+export default function QuizClientLobby() {
 
-}
+    const [selected, setSelected] = useState<string[]>([]);
+    const { transition, timeLeft, submitAnswer, getUserAnswer } = useQuiz();
+    const { question, questionIndex } = useQuizQuestion();
+    const options = useMemo(() => question?.options || [], [question]);
 
-export default function QuizClientLobby({ }: QuizLobbyProps) {
+    const answer = useMemo(() => question?.id ? getUserAnswer(question.id) : undefined, [question, questionIndex, getUserAnswer]);
+    const answerOptions = answer?.optionsId || [];
 
-    const theme = useTheme();
-    const { room } = useRoomManager();
-    const { activeParticipants } = useParticipants();
-    const { imReady, readyUids } = useQuiz();
-    const filteredParticipants = useMemo(() => activeParticipants.filter(u => u.id != room.createdBy && readyUids.includes(u.id)), [room, readyUids, activeParticipants]);
+    const { questions } = useQuestions();
 
-    const [isLoading, setIsLoading] = useState(true);
-    const [showReadyButton, setShowReadyButton] = useState(false);
+    const totalQuestions = questions.length;
+    const progress = ((questionIndex + 1) / totalQuestions) * 100;
 
-    const handleReady = () => {
-        setShowReadyButton(false);
-        setTimeout(() => imReady(), 250);
-    }
-
-    // Simulate loading and show ready button after delay
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setIsLoading(false);
-            setShowReadyButton(true);
-        }, 1000);
-
-        return () => clearTimeout(timer);
-    }, []);
-
-    // Animation variants
-    const containerVariants: Variants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                delayChildren: 0.3,
-                staggerChildren: 0.2
-            }
-        }
+    const getOptionLetter = (index: number) => {
+        return String.fromCharCode(65 + index);
     };
 
-    const itemVariants: Variants = {
-        initial: { y: 20, opacity: 0 },
-        animate: {
-            y: 0,
-            opacity: 1,
-            transition: {
-                type: "spring",
-                stiffness: 100
-            }
+    const handleSelectOption = useCallback((optId: string) => () => {
+        const questionId = question?.id;
+        if (!questionId || !question) return;
+        if (timeLeft <= 0) {
+            // return enqueueSnackbar("Waktu habis!", { variant: "warning" })
         }
-    };
-
-    const pulseVariants: Variants = {
-        pulse: {
-            scale: [1, 1.05, 1],
-            transition: {
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeInOut"
-            }
+        console.log("add")
+        if (!question.multiple) {
+            submitAnswer(questionId, [optId]);
+        } else if (answerOptions.includes(optId)) {
+            submitAnswer(questionId, answerOptions.filter(id => id != optId));
+        } else {
+            submitAnswer(questionId, [...answerOptions, optId]);
         }
-    };
-
-    const floatingVariants: Variants = {
-        float: {
-            y: [0, -10, 0],
-            transition: {
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut"
-            }
-        }
-    };
+    }, [question, timeLeft, answerOptions, submitAnswer]);
 
     return (
-        <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants}
-            style={{
-                minHeight: '100dvh',
-                display: 'flex',
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center'
-            }}>
-            <Stack flex={1} justifyContent={"center"} alignItems={"center"} sx={{ minHeight: '100dvh', p: 3 }}>
-
-                <AnimatePresence mode="wait">
-                    {isLoading ? (
-                        <motion.div
-                            key="loading"
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 1.2 }}
-                            transition={{ duration: 0.5 }}>
-                            <Stack justifyContent={"center"} alignItems={"center"} spacing={3}>
-                                <motion.div
-                                    variants={pulseVariants}
-                                    animate="pulse">
-                                    <CircularProgress
-                                        size={60}
-                                        thickness={4}
-                                        sx={{
-                                            color: theme.palette.primary.main,
-                                            filter: `drop-shadow(0 0 8px ${theme.palette.primary.main}40)`
-                                        }}
+        <Stack gap={3} sx={{ minHeight: '100dvh', userSelect: "none" }}>
+            <Container sx={{ mt: 1 }}>
+                <Paper>
+                    <Box sx={{ px: 3, py: 2 }}>
+                        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
+                            <Box>
+                                <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+                                    Soal {questionIndex + 1} dari {totalQuestions}
+                                </Typography>
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                    <Chip
+                                        icon={<Timer />}
+                                        label={`${questionIndex + 1}/${totalQuestions}`}
+                                        color="primary"
+                                        variant="outlined"
                                     />
-                                </motion.div>
+                                </Stack>
+                            </Box>
 
-                                <motion.div variants={itemVariants}>
-                                    <Typography
-                                        variant="h5"
-                                        align="center"
-                                        sx={{
-                                            background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                                            backgroundClip: 'text',
-                                            WebkitBackgroundClip: 'text',
-                                            color: 'transparent',
-                                            fontWeight: 'bold'
-                                        }}>
-                                        Memulai Quiz...
-                                    </Typography>
-                                </motion.div>
+                            <Box sx={{ textAlign: 'right' }}>
+                                <Typography variant="h6" color="text.secondary">
+                                    Progress
+                                </Typography>
+                                <Typography variant="h4" color="primary.main" fontWeight="bold">
+                                    {Math.round(progress)}%
+                                </Typography>
+                            </Box>
+                        </Stack>
+                        <Box sx={{ mt: 2 }}>
+                            <LinearProgress
+                                variant="determinate"
+                                value={progress}
+                                sx={{
+                                    height: 8,
+                                    borderRadius: 4,
+                                    backgroundColor: 'grey.200'
+                                }}
+                            />
+                        </Box>
+                    </Box>
+                </Paper>
+            </Container>
+            <Stack sx={{ position: 'relative', overflow: 'hidden' }} flex={1}>
+                {transition ? <QuizLeaderboards showTabs={false} /> : (
+                    <>
+                        <Container>
+                            <Stack flex={1} mt={2} gap={2}>
+                                <MotionTypography>
+                                    Sisa Waktu: {timeLeft}s
+                                </MotionTypography>
+                                <Stack>
+                                    <MotionBox
+                                        key={questionIndex}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.5 }}
+                                        sx={{ px: 3 }}>
+                                        {question?.multiple && (
+                                            <Stack
+                                                direction={"row"}
+                                                gap={1}
+                                                sx={{
+                                                    display: "inline-flex",
+                                                    border: "2px solid",
+                                                    borderColor: "primary.main",
+                                                    color: "primary.main",
+                                                    borderRadius: '8px',
+                                                    px: 1,
+                                                    py: 0.25,
+                                                    overflow: "hidden",
+                                                    ml: -1,
+                                                    mb: 1
+                                                }}
+                                                justifyContent={"start"}
+                                                alignItems={"center"}>
+                                                <LibraryAddCheck sx={{ fontSize: '14px' }} />
+                                                <Typography component={"span"} variant={"caption"}>
+                                                    Pilihan Ganda
+                                                </Typography>
+                                            </Stack>
+                                        )}
+                                        <Typography
+                                            variant="h5"
+                                            component="div"
+                                            sx={{
+                                                fontWeight: 'bold',
+                                                lineHeight: 1.6,
+                                            }}>
+                                            <Typography component={"span"} fontSize={25} fontWeight={900} sx={{ opacity: 0.6, ml: -1.5 }}>
+                                                {questionIndex + 1}{". "}
+                                            </Typography>
+                                            {question?.text || "Memuat soal..."}
+                                        </Typography>
+                                    </MotionBox>
 
-                                <motion.div
-                                    variants={floatingVariants}
-                                    animate="float">
-                                    <Typography
-                                        variant="body2"
-                                        color="text.secondary"
-                                        align="center">
-                                        Mempersiapkan lingkungan kuis
-                                    </Typography>
-                                </motion.div>
+                                    <MotionStack initial={{ y: 100 }} animate={{ y: 0 }} mt={5}>
+                                        <Paper>
+                                            <Stack spacing={2} p={3}>
+                                                <Typography variant="h6" color="text.secondary" gutterBottom>
+                                                    Pilihan Jawaban:
+                                                </Typography>
+                                                <AnimatePresence mode='sync'>
+                                                    {options.map((option, index) => (
+                                                        <MotionBox
+                                                            key={option.id}
+                                                            onClick={handleSelectOption(option.id)}
+                                                            initial={{ opacity: 0, x: -20, scale: 1 }}
+                                                            animate={{ opacity: 1, x: 0, transition: { delay: index * 0.1 } }}
+                                                            whileTap={{ scale: 1.01 }}>
+                                                            <Stack
+                                                                direction="row"
+                                                                gap={2}
+                                                                alignItems={"flex-start"}
+                                                                sx={answerOptions.includes(option.id) ? {
+                                                                    borderRadius: question?.multiple ? "10px" : '16px',
+                                                                    color: answerOptions.includes(option.id) ? 'white' : 'text.primary',
+                                                                    outline: "3px dashed",
+                                                                    outlineColor: getColor(answerOptions.includes(option.id) ? "success" : "secondary")[400],
+                                                                } : {}}>
+                                                                <Box
+                                                                    sx={{
+                                                                        width: 32,
+                                                                        height: 32,
+                                                                        borderRadius: question?.multiple ? "10px" : '16px',
+                                                                        backgroundColor: alpha(getColor(answerOptions.includes(option.id) ? "success" : "secondary")[400], 0.4),
+                                                                        color: answerOptions.includes(option.id) ? 'white' : 'text.primary',
+                                                                        outline: "3px solid",
+                                                                        outlineColor: getColor(answerOptions.includes(option.id) ? "success" : "secondary")[400],
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        fontWeight: 'bold',
+                                                                        fontSize: '0.875rem',
+                                                                        flexShrink: 0
+                                                                    }}>
+                                                                    {getOptionLetter(index)}
+                                                                </Box>
+                                                                <Typography variant="body1" sx={{ flex: 1, my: 0.7 }}>
+                                                                    {option.text}
+                                                                </Typography>
+                                                            </Stack>
+                                                        </MotionBox>
+                                                    ))}
+                                                </AnimatePresence>
+                                            </Stack>
+                                        </Paper>
+                                    </MotionStack>
+                                </Stack>
                             </Stack>
-                        </motion.div>
-                    ) : (
-                        <motion.div
-                            key="ready"
-                            initial={{ opacity: 0, y: 50 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.7, type: "spring" }}>
-                            <Stack spacing={4} alignItems="center" sx={{ width: '100%', maxWidth: 600 }}>
-
-                                {/* Header */}
-                                <motion.div variants={itemVariants}>
-                                    <Typography
-                                        variant="h3"
-                                        align="center"
-                                        gutterBottom>
-                                        Siap Mulai?
-                                    </Typography>
-                                    <Typography
-                                        variant="h6"
-                                        align="center"
-                                        color="text.secondary">
-                                        Pastikan kamera sudah aktif untuk memulai kuis
-                                    </Typography>
-                                </motion.div>
-
-                                <ReadyParticipants />
-
-                                {/* Ready Button */}
-                                <AnimatePresence>
-                                    {showReadyButton && (
-                                        <motion.div
-                                            initial={{ opacity: 0, scale: 0 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            exit={{ opacity: 0, scale: 0 }}
-                                            transition={{ delay: 0.5 }}>
-                                            <motion.div
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}>
-                                                <Button
-                                                    variant="contained"
-                                                    size="large"
-                                                    onClick={handleReady}
-                                                    startIcon={<CheckCircle />}
-                                                    sx={{
-                                                        px: 4,
-                                                        py: 1.5,
-                                                        fontSize: '1.1rem',
-                                                        borderRadius: 3,
-
-                                                    }}>
-                                                    Saya Sudah Siap!
-                                                </Button>
-                                            </motion.div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                        </Container>
+                        {Boolean(timeLeft == 0 && 0) && (
+                            <Stack
+                                justifyContent={"center"}
+                                alignItems={"center"}
+                                sx={{
+                                    position: "absolute",
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    background: '#0005',
+                                    pointerEvents: 'all',
+                                    backdropFilter: 'blur(8px)',
+                                    boxShadow: '0px 0px 0px 100px #000'
+                                }}>
+                                <Stack justifyContent={"center"} alignItems={"center"} mb={1} spacing={2} color={"warning.main"}>
+                                    <ClockAlert size={45} strokeWidth={3} />
+                                    <MotionTypography fontWeight={800} fontSize={18}>
+                                        Waktu Habis
+                                    </MotionTypography>
+                                </Stack>
+                                <Typography variant='caption' color='text.secondary'>
+                                    Mohon menunggu soal berikutnya akan segera mucul.
+                                </Typography>
                             </Stack>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                        )}
+                    </>
+                )}
 
-                {/* Floating Camera */}
-                <FloatingCamera onReady={handleReady} />
             </Stack>
-        </motion.div>
+        </Stack>
     );
 }
