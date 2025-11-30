@@ -1,16 +1,16 @@
 'use client'
 
 import { ReactNode, useMemo, createContext, useContext, useCallback, useEffect } from 'react';
-import { RoomData } from '@/types';
-import { ydoc } from '@/libs/yjs';
 import ParticipantsProvider from './ParticipantsProvider';
 import QuestionsProvider from './QuestionsProvider';
 import { useYMap } from '@/hooks/useY';
+import { RoomData } from '@/types';
+import { ydoc } from '@/libs/yjs';
 
-export interface RoomManagerState<T = any> {
-    room: RoomData & T;
+export interface RoomManagerState<T = any, R = RoomData & T> {
+    room: R;
     isHost: boolean;
-    updateRoom: <K extends keyof RoomData>(key: K, value: RoomData[K]) => void;
+    updateRoom: <K extends keyof R>(key: K, value: R[K]) => void;
 }
 
 export interface RoomManagerProps {
@@ -32,26 +32,23 @@ export default function RoomManagerProvider({ children, roomData, isHost }: Room
 
     const yRoom = useMemo(() => {
         const map = ydoc.getMap(roomData.id);
-        if (isHost) {
-            ydoc.transact(() => {
-                for (const [k, v] of Object.entries(roomData)) {
-                    try {
-                        const current = map.get(k);
-                        if (current !== undefined) continue;
-                        map.set(k, v);
-                    } catch (error) {
-                        console.log("Skipped", k, error);
-                    }
+        ydoc.transact(() => {
+            for (const [k, v] of Object.entries(roomData)) {
+                try {
+                    const current = map.get(k);
+                    if (current !== undefined) continue;
+                    map.set(k, v);
+                } catch (error) {
+                    console.log("Skipped", k, error);
                 }
-            });
-        }
-
+            }
+        });
         return map;
     }, [roomData.id, isHost]);
     const room = useYMap<RoomData>(yRoom as any);
 
     const updateRoom = useCallback<RoomManagerState['updateRoom']>((key, value) => {
-        if (!isHost) return;
+        if (!isHost || typeof key != "string") return;
         ydoc.transact(() => {
             yRoom.set(key, value);
         });

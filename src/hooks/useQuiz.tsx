@@ -1,7 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import { useQuestions } from '@/contexts/QuestionsProvider';
-import { Answer, Question } from '@/types';
+import { Question } from '@/types';
 
+export type QuizEventName = "initializing" | "start" | "pause" | "resume" | "finish" | "question-next" | "question-prev";
+export type QuizEventArgs = {
+    "question-next": { nextIndex: number, prevIndex: number };
+    "question-prev": { nextIndex: number, prevIndex: number };
+}
 
 export type QuizState = {
     // Quiz state
@@ -22,15 +27,8 @@ export type QuizState = {
 
     // User actions
     readyUids: string[];
+    isCurrentUserJoined: boolean;
     imReady: () => void;
-    submitAnswer: (questionId: string, optionsId: string[]) => void;
-    getUserAnswer: (questionId: string) => Answer | null | undefined;
-    getQuestionAnswers: (questionId: string) => Answer[];
-    getUserStats: (userId: string) => {
-        totalAnswered: number;
-        totalTimeSpent: number;
-        averageTime: number;
-    };
 
     // Host controls
     isHost: boolean;
@@ -43,17 +41,8 @@ export type QuizState = {
     jumpToQuestion: (targetIndex: number) => void;
     setAutoPlay: (autoPlay: boolean) => void;
 
-    // Statistics
-    quizStats: {
-        totalQuestions: number;
-        totalParticipants: number;
-        currentQuestionAnswers: number;
-        currentQuestionParticipants: number;
-        totalAnswers: number;
-        completionRate: number;
-        averageAnswersPerQuestion: number;
-    };
-    answers: Answer[];
+    // @ts-ignore
+    addEventListener: <E extends QuizEventName>(event: E, callback: (args: QuizEventArgs[E]) => void) => () => void
 
     // Navigation helpers
     isFirstQuestion: boolean;

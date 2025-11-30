@@ -21,6 +21,7 @@ import { useRoomManager } from '@/contexts/RoomManager';
 import { useMemo } from 'react';
 import AvatarCompact from '@/components/avatars/AvatarCompact';
 import Tooltip from '@/components/Tooltip';
+import { useParticipants } from '@/hooks/useParticipants';
 
 export interface QuestionsPreviewProps {
 
@@ -29,8 +30,8 @@ export interface QuestionsPreviewProps {
 export default function QuestionsPreview({ }: QuestionsPreviewProps) {
 
     const { questions } = useQuestions();
-    const { room, participantsModule } = useRoomManager();
-    const { participants } = participantsModule;
+    const { room } = useRoomManager();
+    const { participants } = useParticipants();
     const hostUser = useMemo(() => participants.find(client => client.id == room.createdBy), [room, participants]);
 
     const totalDuration = questions.reduce((total, q) => total + q.duration, 0);

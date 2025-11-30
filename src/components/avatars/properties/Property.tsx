@@ -1,4 +1,4 @@
-import { Stack, Typography, Box, Button, Slider, Tooltip, Card, CardContent, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Stack, Typography, Box, Button, Slider, Tooltip, Card, CardContent } from '@mui/material';
 import { motion } from 'framer-motion';
 import GridField from './defaults/GridField';
 import { StyleName } from '../data';

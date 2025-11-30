@@ -1,31 +1,22 @@
 import { useQuestions } from '@/contexts/QuestionsProvider';
 import { useQuiz, useQuizQuestion } from '@/hooks/useQuiz';
-import {
-    Stack,
-    Typography,
-    Paper,
-    Box,
-    Chip,
-    LinearProgress,
-    Container,
-    alpha
-} from '@mui/material';
-import {
-    Timer,
-    LibraryAddCheck
-} from '@mui/icons-material';
-import { useCallback, useMemo, useState } from 'react';
+import { Stack, Typography, Paper, Box, Chip, LinearProgress, Container, alpha } from '@mui/material';
+import { Timer, LibraryAddCheck, EmojiEvents } from '@mui/icons-material';
+import { useCallback, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { MotionBox, MotionStack, MotionTypography } from '../motion';
 import { ClockAlert } from 'lucide-react';
 import { getColor } from '@/theme/colors';
 import QuizLeaderboards from './QuizLeaderboards';
 import { enqueueSnackbar } from 'notistack';
+import { useRoomManager } from '@/contexts/RoomManager';
+import { useAnswers } from '@/hooks/useAnswers';
 
 export default function QuizClientLobby() {
 
-    const [selected, setSelected] = useState<string[]>([]);
-    const { transition, timeLeft, submitAnswer, getUserAnswer } = useQuiz();
+    const { room } = useRoomManager();
+    const { transition, timeLeft, isLastQuestion } = useQuiz();
+    const { getUserAnswer, submitAnswer } = useAnswers();
     const { question, questionIndex } = useQuizQuestion();
     const options = useMemo(() => question?.options || [], [question]);
 
@@ -45,9 +36,8 @@ export default function QuizClientLobby() {
         const questionId = question?.id;
         if (!questionId || !question) return;
         if (timeLeft <= 0) {
-            // return enqueueSnackbar("Waktu habis!", { variant: "warning" })
+            return enqueueSnackbar("Waktu habis!", { variant: "warning" });
         }
-        console.log("add")
         if (!question.multiple) {
             submitAnswer(questionId, [optId]);
         } else if (answerOptions.includes(optId)) {
@@ -101,7 +91,18 @@ export default function QuizClientLobby() {
                 </Paper>
             </Container>
             <Stack sx={{ position: 'relative', overflow: 'hidden' }} flex={1}>
-                {transition ? <QuizLeaderboards showTabs={false} /> : (
+                {Boolean(transition && room.enableLeaderboard) ? (
+                    <Container>
+                        <Box py={3} />
+                        <Box sx={{ textAlign: 'center', mb: 6 }}>
+                            <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+                                <EmojiEvents sx={{ fontSize: 40, color: 'gold', mr: 1, verticalAlign: 'middle' }} />
+                                Peringkat {isLastQuestion ? "Final" : "Sementara"}
+                            </Typography>
+                        </Box>
+                        <QuizLeaderboards showTabs={false} />
+                    </Container>
+                ) : (
                     <>
                         <Container>
                             <Stack flex={1} mt={2} gap={2}>
@@ -166,7 +167,8 @@ export default function QuizClientLobby() {
                                                             onClick={handleSelectOption(option.id)}
                                                             initial={{ opacity: 0, x: -20, scale: 1 }}
                                                             animate={{ opacity: 1, x: 0, transition: { delay: index * 0.1 } }}
-                                                            whileTap={{ scale: 1.01 }}>
+                                                            whileTap={{ scale: 1.01 }}
+                                                            sx={{ cursor: "pointer" }}>
                                                             <Stack
                                                                 direction="row"
                                                                 gap={2}
@@ -208,7 +210,7 @@ export default function QuizClientLobby() {
                                 </Stack>
                             </Stack>
                         </Container>
-                        {Boolean(timeLeft == 0 && 0) && (
+                        {Boolean(timeLeft == 0) && (
                             <Stack
                                 justifyContent={"center"}
                                 alignItems={"center"}
@@ -218,10 +220,9 @@ export default function QuizClientLobby() {
                                     left: 0,
                                     width: '100%',
                                     height: '100%',
-                                    background: '#0005',
+                                    background: '#fff5',
                                     pointerEvents: 'all',
                                     backdropFilter: 'blur(8px)',
-                                    boxShadow: '0px 0px 0px 100px #000'
                                 }}>
                                 <Stack justifyContent={"center"} alignItems={"center"} mb={1} spacing={2} color={"warning.main"}>
                                     <ClockAlert size={45} strokeWidth={3} />
@@ -230,7 +231,7 @@ export default function QuizClientLobby() {
                                     </MotionTypography>
                                 </Stack>
                                 <Typography variant='caption' color='text.secondary'>
-                                    Mohon menunggu soal berikutnya akan segera mucul.
+                                    {isLastQuestion ? "Quiz telah berakhir, mohon menunggu kamu akan segera dialihkan." : "Mohon menunggu soal berikutnya akan segera mucul."}
                                 </Typography>
                             </Stack>
                         )}

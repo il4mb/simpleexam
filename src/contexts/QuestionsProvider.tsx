@@ -62,7 +62,7 @@ export default function QuestionsProvider({ children, yRoom }: QuestionsProvider
         const newQuestion: Question = {
             id,
             text: text.replace(/\s+$/, ' ').replace(/^\s+/, ''),
-            options: [{ id: nanoid(6), text: '', correct: true }, { id: nanoid(6), text: '', correct: false }],
+            options: [{ id: nanoid(6), text: '', correct: true, score: 10 }, { id: nanoid(6), text: '', correct: false }],
             multiple: false,
             duration: 30,
         };

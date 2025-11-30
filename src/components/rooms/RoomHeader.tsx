@@ -1,13 +1,17 @@
 'use client'
 
-import { MotionPaper, MotionBox } from '@/components/motion';
+import { MotionPaper, MotionBox, MotionChip } from '@/components/motion';
 import { useRoomManager } from '@/contexts/RoomManager';
-import { RocketLaunch, Share, Settings, QrCode, Pause, PlayArrow, Stop } from '@mui/icons-material';
+import { RocketLaunch, Pause, PlayArrow, Stop, ContentCopy, LeaderboardRounded, VideoCameraFront } from '@mui/icons-material';
 import { Box, Button, Chip, Stack, Typography, IconButton, alpha, Container, CircularProgress } from '@mui/material';
 import { Crown } from 'lucide-react';
 import { useTheme } from '@mui/material/styles';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { enqueueSnackbar } from 'notistack';
+import RoomSettingButton from './RoomSettingButton';
+import Tooltip from '../Tooltip';
+import RoomQRButton from './RoomQRButton';
+import { AnimatePresence } from 'framer-motion';
 
 export interface QuizHeaderProps {
 
@@ -16,8 +20,6 @@ export default function RoomHeader({ }: QuizHeaderProps) {
 
     const theme = useTheme();
     const { room, isHost, updateRoom } = useRoomManager();
-    // const { startQuiz, pauseQuiz, resumeQuiz, endQuiz } = useQuizLobby();
-    const [showQR, setShowQR] = useState(false);
 
     const copyRoomCode = () => {
         navigator.clipboard.writeText(room.id);
@@ -254,19 +256,39 @@ export default function RoomHeader({ }: QuizHeaderProps) {
                                             size="small"
                                             sx={{
                                                 position: "absolute",
-                                                bottom: "80%"
+                                                bottom: "90%"
                                             }}
                                         />
                                     )}
-                                    <Typography variant="h4" fontWeight="bold">
-                                        {room.name}
-                                    </Typography>
-                                    <Chip
-                                        label={getStatusText(room.status)}
-                                        color={getStatusColor(room.status)}
-                                        variant="filled"
-                                        sx={{ fontWeight: 600, minWidth: 120 }}
-                                    />
+                                    <Stack justifyContent={"start"} alignItems={"start"} gap={0.5}>
+                                        <Typography variant="h4" fontWeight="bold">
+                                            {room.name}
+                                        </Typography>
+                                        <Chip
+                                            label={getStatusText(room.status)}
+                                            color={getStatusColor(room.status)}
+                                            variant="filled"
+                                            sx={{ fontWeight: 600, minWidth: 120, position: "absolute", top: 0, right: 0 }}
+                                        />
+                                        <AnimatePresence mode={"sync"}>
+                                            {room.enableLeaderboard && (
+                                                <MotionChip
+                                                    key={"leaderboard-feture"}
+                                                    initial={{ x: -20, opacity: 0 }}
+                                                    animate={{ x: 0, opacity: 1 }}
+                                                    exit={{ x: -20, opacity: 0 }}
+                                                    label={<><LeaderboardRounded /> Leaderboard</>} />
+                                            )}
+                                            {room.enableAiExpression && (
+                                                <MotionChip
+                                                    key={"video-feture"}
+                                                    initial={{ x: -20, opacity: 0 }}
+                                                    animate={{ x: 0, opacity: 1 }}
+                                                    exit={{ x: -20, opacity: 0 }}
+                                                    label={<><VideoCameraFront /> Facecam</>} />
+                                            )}
+                                        </AnimatePresence>
+                                    </Stack>
                                 </Stack>
                             </Stack>
 
@@ -277,32 +299,20 @@ export default function RoomHeader({ }: QuizHeaderProps) {
                                     animate={{ scale: 1, opacity: 1 }}
                                     transition={{ delay: 0.2 }}>
                                     <Stack direction="row" spacing={2} alignItems="center">
-                                        <IconButton
-                                            onClick={() => setShowQR(!showQR)}
-                                            sx={{
-                                                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                                '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.2) },
-                                                borderRadius: 2,
-                                            }}>
-                                            <QrCode fontSize="small" />
-                                        </IconButton>
-                                        <IconButton
-                                            onClick={shareRoom}
-                                            sx={{
-                                                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                                '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.2) },
-                                                borderRadius: 2,
-                                            }}>
-                                            <Share fontSize="small" />
-                                        </IconButton>
-                                        <IconButton
-                                            sx={{
-                                                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                                '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.2) },
-                                                borderRadius: 2,
-                                            }}>
-                                            <Settings fontSize="small" />
-                                        </IconButton>
+
+                                        <RoomQRButton />
+                                        <Tooltip title={"Salin Kode Ruangan"}>
+                                            <IconButton
+                                                onClick={shareRoom}
+                                                sx={{
+                                                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                                    '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.2) },
+                                                    borderRadius: 2,
+                                                }}>
+                                                <ContentCopy fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <RoomSettingButton />
 
                                         <Stack direction="row" spacing={1}>
                                             {getSecondaryActionButton()}
@@ -312,27 +322,6 @@ export default function RoomHeader({ }: QuizHeaderProps) {
                                 </MotionBox>
                             )}
                         </Stack>
-
-                        {/* QR Code Section */}
-                        {showQR && (
-                            <MotionBox
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                sx={{ mt: 2, p: 3, bgcolor: alpha(theme.palette.primary.main, 0.02), borderRadius: 3 }}>
-                                <Typography variant="h6" gutterBottom>
-                                    QR Code untuk Bergabung
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                    Scan QR code ini untuk bergabung ke room
-                                </Typography>
-                                {/* QR Code would go here */}
-                                <Box sx={{ width: 200, height: 200, bgcolor: 'grey.100', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        QR Code Placeholder
-                                    </Typography>
-                                </Box>
-                            </MotionBox>
-                        )}
                     </Stack>
                 </Container>
             </MotionPaper>

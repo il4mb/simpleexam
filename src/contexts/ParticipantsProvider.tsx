@@ -53,7 +53,6 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
             const userIndex = users.findIndex(u => u.id === userId);
             if (userIndex !== -1) {
                 yParticipants.delete(userIndex, 1);
-                console.log(`User ${userId} removed by host`);
                 enqueueSnackbar(`User removed from room`, { variant: "success" });
             }
         });
@@ -95,7 +94,6 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
                     status: 'active',
                     joinedAt: Date.now(),
                 }]);
-                console.log(`User ${userId} approved by host`);
                 enqueueSnackbar(`User approved`, { variant: "success" });
             }
         });
@@ -113,7 +111,6 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
             const userIndex = users.findIndex(u => u.id === userId && u.status === 'pending');
             if (userIndex !== -1) {
                 yParticipants.delete(userIndex, 1);
-                console.log(`User ${userId} rejected by host`);
                 enqueueSnackbar(`User rejected`, { variant: "info" });
             }
         });

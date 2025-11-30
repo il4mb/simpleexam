@@ -1,4 +1,3 @@
-import { ReactNode } from 'react';
 import { collectionMapNamed, StyleName } from './data';
 import { Stack } from '@mui/material';
 import Avatar from './Avatar';

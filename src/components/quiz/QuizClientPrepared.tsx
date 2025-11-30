@@ -4,13 +4,9 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useQuiz } from '@/hooks/useQuiz';
 import { useEffect, useState } from 'react';
 import ReadyParticipants from './ReadyParticipants';
-import { useCamera } from '@/contexts/CameraProvider';
+import { useCamera } from '@/hooks/useCamera';
 
-export interface QuizLobbyProps {
-
-}
-
-export default function QuizClientPrepared({ }: QuizLobbyProps) {
+export default function QuizClientPrepared() {
 
     const theme = useTheme();
     const { ready: cameraReady } = useCamera();

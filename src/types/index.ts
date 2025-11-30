@@ -17,6 +17,7 @@ export interface RoomData {
     maxPlayers: number;
     currentPlayers: number;
     enableLeaderboard?: boolean;
+    enableAiExpression?: boolean;
 }
 
 export interface QuestionOption {
@@ -39,4 +40,10 @@ export type Answer = {
     optionsId: string[];
     timestamp: number;
     timeSpent: number;
+}
+
+
+export type ExpressionName = "happy" | "sad" | "angry" | "fearful" | "disgusted" | "surprised" | "neutral";
+export type ExpressionData = {
+    [key in ExpressionName]: number;
 }

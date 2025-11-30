@@ -16,7 +16,6 @@ import { Reorder } from 'framer-motion';
 import QuestionCard from './QuestionCard';
 import { useQuestions } from '@/contexts/QuestionsProvider';
 import { Question } from '@/types';
-import { getColor } from '@/theme/colors';
 
 export interface QuizProps { }
 

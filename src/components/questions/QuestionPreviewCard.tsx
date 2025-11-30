@@ -42,14 +42,6 @@ export default function QuestionPreviewCard({ question, index, totalQuestions }:
                         <Typography variant="caption" color="text.secondary">
                             {question.options.length} options
                         </Typography>
-                        {Boolean(question.correctAnswer) && (
-                            <Chip
-                                label="Answer Key Set"
-                                color="success"
-                                size="small"
-                                variant="outlined"
-                            />
-                        )}
                     </Stack>
                 </Stack>
             </CardContent>

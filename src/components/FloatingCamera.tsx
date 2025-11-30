@@ -13,7 +13,7 @@ export interface FloatingCameraProps {
 }
 
 // Map expressions to Emojis and Colors
-const EXPRESSION_MAP: Record<string, { emoji: string; color: string; label: string }> = {
+export const EXPRESSION_MAP: Record<string, { emoji: string; color: string; label: string }> = {
     happy: { emoji: '😊', color: '#4caf50', label: 'Happy' },
     sad: { emoji: '😢', color: '#2196f3', label: 'Sad' },
     angry: { emoji: '😠', color: '#f44336', label: 'Angry' },

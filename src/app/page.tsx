@@ -1,10 +1,10 @@
 'use client'
 
-import { Container, Stack, TextField, Typography, Box, Paper } from "@mui/material";
-import { Rocket, Timeline, Gamepad, Stars, FlashOn, AcUnit } from "@mui/icons-material";
+import { Container, Stack, TextField, Typography, Box } from "@mui/material";
+import { Timeline, Gamepad, Stars, FlashOn, AcUnit } from "@mui/icons-material";
 import { useState } from "react";
 import CreateRoom from "@/components/CreateRoom";
-import { MotionBox, MotionButton, MotionPaper } from "@/components/motion";
+import { MotionBox, MotionButton } from "@/components/motion";
 import { useCurrentUser } from "@/contexts/SessionProvider";
 import AvatarCompact from "@/components/avatars/AvatarCompact";
 

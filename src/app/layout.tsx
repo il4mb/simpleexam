@@ -1,4 +1,3 @@
-import DevtoolsPrevent from "@/contexts/DevtoolsPrevent";
 import SessionProvider from "@/contexts/SessionProvider";
 import SnackbarProvider from "@/contexts/SnackbarProvider";
 import Theme from "@/theme/Theme";
@@ -17,9 +16,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode;
                 <Theme>
                     <SnackbarProvider>
                         <SessionProvider>
-                            {/* <DevtoolsPrevent> */}
-                                {children}
-                            {/* </DevtoolsPrevent> */}
+                            {children}
                         </SessionProvider>
                     </SnackbarProvider>
                 </Theme>

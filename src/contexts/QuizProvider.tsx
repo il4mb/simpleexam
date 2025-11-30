@@ -1,14 +1,16 @@
-import { QuizContext } from '@/hooks/useQuiz';
+import { QuizContext, QuizEventArgs, QuizEventName, QuizState } from '@/hooks/useQuiz';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRoomManager } from './RoomManager';
-import * as Y from "yjs";
-import { ydoc } from '@/libs/yjs';
 import { useCurrentUser } from './SessionProvider';
-import { useYArray, useYMap } from '@/hooks/useY';
+import { useYArray } from '@/hooks/useY';
 import { useQuestions } from './QuestionsProvider';
 import { Answer, Question } from '@/types';
 import { useTransition } from '@/hooks/useTransition';
-import { join } from 'path';
+import QuizAnswersProvider from './QuizAnswersProvider';
+import { useCreateEvents } from "@/hooks/useCreateEvents";
+import { enqueueSnackbar } from "notistack";
+import * as Y from "yjs";
+import RecordsProvider from './RecordsProvider';
 
 type TQuizRoom = {
     questionIndex?: number;
@@ -28,22 +30,13 @@ export interface QuizProviderProps {
 
 export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
 
+    const { addEventListener, emit } = useCreateEvents<QuizEventName, QuizEventArgs>();
     const currentUser = useCurrentUser();
     const { room, isHost, updateRoom } = useRoomManager<TQuizRoom>();
     const { questions } = useQuestions();
     const [roomStatus, setRoomStatus] = useState(room.status);
 
-    // Yjs arrays
-    const yAnswers = useMemo(() => {
-        let map = yRoom.get('answersMap'); // Gunakan nama baru untuk menghindari konflik data lama
-        if (!map) {
-            map = new Y.Map<Record<string, Answer>>();
-            yRoom.set('answersMap', map);
-        }
-        return map as Y.Map<Record<string, Answer>>;
-    }, [yRoom]);
-
-    const yReadyUidList = useMemo(() => {
+    const yJointQuizUid = useMemo(() => {
         let arr = yRoom.get('readyUids');
         if (!arr) {
             arr = new Y.Array<string>();
@@ -52,12 +45,9 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
         return arr as Y.Array<string>;
     }, [yRoom]);
 
-    // Helper untuk convert Map ke Array agar kompatibel dengan UI yang ada
-    const answersMap = useYMap<Record<string, Answer>>(yAnswers); // Asumsi Anda punya hook useYMap, jika tidak gunakan forceUpdate
-    const answers = useMemo(() => Object.values(answersMap), [answersMap]);
-    const readyUids = useYArray(yReadyUidList);
-
-    const transitionDelay = 15000;
+    const jointQuizUids = useYArray(yJointQuizUid);
+    const isCurrentUserJoined = useMemo(() => Boolean(currentUser && jointQuizUids.includes(currentUser.id)), [currentUser?.id, jointQuizUids]);
+    const transitionDelay = useMemo(() => room.enableLeaderboard ? 8000 : 4000, [room.enableLeaderboard]);
     const autoPlay = room.autoPlay === true;
     const questionIndex = typeof room.questionIndex === "number" ? room.questionIndex : -1;
     const questionStartTime = room.questionStartTime || 0;
@@ -72,18 +62,28 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
     // Quiz control functions
     const imReady = useCallback(() => {
         const uid = currentUser?.id;
-        if (!uid) return;
+        const status = yRoom.get("status");
 
-        if (!readyUids.includes(uid)) {
-            ydoc.transact(() => {
-                yReadyUidList.push([uid]);
-            });
+        if (!uid || status !== "prepared") {
+            if (status == "playing") {
+                enqueueSnackbar("Host telah memulai quiz sebelum kamu siap!", { variant: "warning" });
+            } else {
+                enqueueSnackbar("Quiz telah berakhir!", { variant: "default" });
+            }
+            return;
         }
-    }, [currentUser?.id, readyUids, yReadyUidList]);
+        if (!uid || status !== "prepared") return;
+
+        yRoom.doc?.transact(() => {
+            if (!jointQuizUids.includes(uid)) {
+                yJointQuizUid.push([uid]);
+            }
+        });
+    }, [currentUser?.id, jointQuizUids, yJointQuizUid, room.status]);
 
     const setAutoPlay = useCallback((autoPlay: boolean) => {
         if (!isHost) return;
-        ydoc.transact(() => {
+        yRoom.doc?.transact(() => {
             yRoom.set("autoPlay", autoPlay);
         });
     }, [isHost, yRoom]);
@@ -94,29 +94,31 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
             return;
         }
         immutableRef.current = true;
+        emit("start");
         yRoom.doc?.transact(() => {
             yRoom.set("questionIndex", 0);
             yRoom.set("questionStartTime", Date.now());
             yRoom.set("startTime", Date.now());
             yRoom.set("status", "playing");
             yRoom.set("quizTransition", false);
-            yAnswers.clear();
-            yReadyUidList.delete(0, yReadyUidList.length);
         });
-    }, [isHost, yRoom, answers, yReadyUidList]);
+    }, [isHost, yRoom, emit]);
 
     const finishQuiz = useCallback(() => {
         if (!isHost) {
             console.warn("Non host attempted to finish quiz");
             return;
         }
+        emit("finish");
         yRoom.doc?.transact(() => {
             yRoom.set("questionIndex", -1);
             yRoom.set("endTime", Date.now());
             yRoom.set("status", "ended");
             yRoom.set("quizTransition", false);
+            yJointQuizUid.delete(0, yJointQuizUid.length);
+
         });
-    }, [isHost, yRoom]);
+    }, [isHost, yRoom, yJointQuizUid, emit]);
 
     const nextQuiz = useCallback(async () => {
         if (!isHost) {
@@ -128,7 +130,7 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
 
         setIsTransitioning(true);
         const nextIndex = questionIndex + 1;
-
+        emit("question-next", { nextIndex, prevIndex: questionIndex });
         if (nextIndex > questions.length - 1) {
             finishQuiz();
             setIsTransitioning(false);
@@ -146,7 +148,7 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
         } finally {
             setIsTransitioning(false);
         }
-    }, [isHost, questionIndex, questions.length, yRoom, finishQuiz, isTransitioning]);
+    }, [isHost, questionIndex, questions.length, yRoom, finishQuiz, isTransitioning, emit]);
 
     const prevQuiz = useCallback(() => {
         if (!isHost) {
@@ -154,11 +156,12 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
             return;
         }
         const prevIndex = Math.max(0, questionIndex - 1);
+        emit("question-prev", { nextIndex: prevIndex, prevIndex: questionIndex });
         yRoom.doc?.transact(() => {
             yRoom.set("questionIndex", prevIndex);
             yRoom.set("questionStartTime", Date.now());
         });
-    }, [isHost, questionIndex, yRoom]);
+    }, [isHost, questionIndex, yRoom, emit]);
 
     const jumpToQuestion = useCallback((targetIndex: number) => {
         if (!isHost) return;
@@ -173,84 +176,23 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
 
     const pauseQuiz = useCallback(() => {
         if (!isHost) return;
+        emit("pause");
         yRoom.doc?.transact(() => {
             yRoom.set("status", "paused");
         });
-    }, [isHost, yRoom]);
+    }, [isHost, yRoom, emit]);
 
     const resumeQuiz = useCallback(() => {
         if (!isHost) return;
+        emit("resume");
         yRoom.doc?.transact(() => {
             yRoom.set("status", "playing");
-            // Reset start time to account for pause
             if (questionIndex >= 0) {
                 yRoom.set("questionStartTime", Date.now());
             }
         });
-    }, [isHost, yRoom, questionIndex]);
+    }, [isHost, yRoom, questionIndex, emit]);
 
-    // Answer submission
-    const submitAnswer = useCallback((questionId: string, optionsId: string[]) => {
-        const uid = currentUser?.id;
-        // Validasi ketat
-        if (!uid || !yRoom.doc) return;
-
-        if (!optionsId) {
-            console.warn("No options selected");
-            return;
-        }
-
-        const now = Date.now();
-
-        // Key unik: kombinasi UID dan QuestionID (jika user bisa jawab banyak soal)
-        // Atau cukup UID jika 1 user hanya punya 1 jawaban aktif di room.
-        // Asumsi: Kita simpan jawaban per soal.
-        // Karena Y.Map flat, kita bisa buat key: `${uid}:${questionId}`
-        const answerKey = `${uid}:${questionId}`;
-
-        const answerData: Answer = {
-            uid,
-            questionId,
-            optionsId,
-            timestamp: now,
-            timeSpent: now - (room.questionStartTime || 0)
-        };
-
-        try {
-            yRoom.doc.transact(() => {
-                // @ts-ignore
-                yAnswers.set(answerKey, answerData);
-            });
-        } catch (error) {
-            console.error("Error submitting answer:", error);
-        }
-    }, [currentUser?.id, room.questionStartTime, yRoom, yAnswers]);
-
-    // Get user's answer for specific question
-    const getUserAnswer = useCallback((questionId: string) => {
-        const uid = currentUser?.id;
-        if (!uid) return null;
-        return answers.find(answer => answer.uid === uid && answer.questionId === questionId);
-    }, [currentUser?.id, answers]);
-
-    // Get all answers for specific question
-    const getQuestionAnswers = useCallback((questionId: string) => {
-        return answers.filter(answer => answer.questionId === questionId);
-    }, [answers]);
-
-    // Get user statistics
-    const getUserStats = useCallback((userId: string) => {
-        const userAnswers = answers.filter(answer => answer.uid === userId);
-        const totalAnswered = userAnswers.length;
-        const totalTimeSpent = userAnswers.reduce((total, answer) => total + answer.timeSpent, 0);
-        const averageTime = totalAnswered > 0 ? totalTimeSpent / totalAnswered : 0;
-
-        return {
-            totalAnswered,
-            totalTimeSpent,
-            averageTime
-        };
-    }, [answers]);
 
     // Sync transition state with Yjs
     useEffect(() => {
@@ -261,21 +203,6 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
         });
     }, [transition, isHost, yRoom]);
 
-
-    // Handle host leaving
-    useEffect(() => {
-        const handleBeforeUnload = () => {
-            if (isHost) {
-                updateRoom("status", "paused");
-            }
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-        };
-    }, [isHost, updateRoom]);
-
     // Room status synchronization
     useEffect(() => {
         if (!isHost) return;
@@ -283,33 +210,33 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
 
         try {
             if (room.status === "prepared") {
-                console.log("Quiz prepared - initializing");
                 yRoom.doc?.transact(() => {
                     yRoom.set("autoPlay", true);
                     yRoom.set("questionIndex", -1);
                     yRoom.set("answers", new Y.Array());
                     yRoom.set("startTime", Date.now());
                     yRoom.set("quizTransition", false);
-                    yAnswers.clear();
-                    yReadyUidList.delete(0, yReadyUidList.length);
+                    yJointQuizUid.delete(0, yJointQuizUid.length);
                 });
+                emit("initializing");
             } else if (room.status === "paused") {
                 console.log("Quiz paused");
+                emit("pause");
             } else if (room.status === "ended") {
-                console.log("Quiz ended");
                 yRoom.doc?.transact(() => {
                     yRoom.set("autoPlay", false);
                     yRoom.set("questionIndex", -1);
                     yRoom.set("endTime", Date.now());
-                    yReadyUidList.delete(0, yReadyUidList.length);
+                    yJointQuizUid.delete(0, yJointQuizUid.length);
                 });
+                emit("finish");
             }
         } catch (error) {
             console.error("Error syncing room status:", error);
         }
 
         setRoomStatus(room.status);
-    }, [room.status, roomStatus, isHost, yRoom, yReadyUidList, answers]);
+    }, [room.status, roomStatus, isHost, yRoom, yJointQuizUid, emit]);
 
     // Auto-play functionality
     useEffect(() => {
@@ -352,13 +279,19 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
         if (!uid) return;
 
         const cleanupUserData = () => {
+            const status = yRoom.get("status");
             try {
-                const arr = yReadyUidList.toArray();
-                const index = arr.indexOf(uid);
-                if (index !== -1) {
-                    yRoom.doc?.transact(() => {
-                        yReadyUidList.delete(index, 1);
-                    });
+                if (status == "prepared") {
+                    const arr = yJointQuizUid.toArray();
+                    const index = arr.indexOf(uid);
+                    if (index !== -1) {
+                        yRoom.doc?.transact(() => {
+                            yJointQuizUid.delete(index, 1);
+                        });
+                    }
+                }
+                if (isHost && status == "playing") {
+                    updateRoom("status", "paused");
                 }
             } catch (error) {
                 console.error("Error cleaning up user data:", error);
@@ -372,28 +305,9 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
             window.removeEventListener("beforeunload", cleanupUserData);
             window.removeEventListener("pagehide", cleanupUserData);
         };
-    }, [currentUser?.id, yReadyUidList]);
+    }, [currentUser?.id, yJointQuizUid]);
 
-    // Quiz statistics
-    const quizStats = useMemo(() => {
-        const totalQuestions = questions.length;
-        const totalParticipants = new Set(answers.map(a => a.uid)).size;
-        const currentQuestionAnswers = question ? getQuestionAnswers(question.id) : [];
-        const currentQuestionParticipants = new Set(currentQuestionAnswers.map(a => a.uid)).size;
-        const totalAnswers = answers.length;
-
-        return {
-            totalQuestions,
-            totalParticipants,
-            currentQuestionAnswers: currentQuestionAnswers.length,
-            currentQuestionParticipants,
-            totalAnswers,
-            completionRate: totalParticipants > 0 ? (currentQuestionParticipants / totalParticipants) * 100 : 0,
-            averageAnswersPerQuestion: totalQuestions > 0 ? totalAnswers / totalQuestions : 0
-        };
-    }, [questions, answers, question, getQuestionAnswers]);
-
-    const valueContext = useMemo(() => ({
+    const valueContext = useMemo<QuizState>(() => ({
         // Quiz state
         isQuizActive: room.status === "playing",
         isQuizPaused: room.status === "paused",
@@ -411,12 +325,9 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
         totalQuestions: questions.length,
 
         // User actions
-        readyUids,
+        readyUids: jointQuizUids,
+        isCurrentUserJoined,
         imReady,
-        submitAnswer,
-        getUserAnswer,
-        getQuestionAnswers,
-        getUserStats,
 
         // Host controls
         isHost,
@@ -428,10 +339,7 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
         resumeQuiz,
         jumpToQuestion,
         setAutoPlay,
-
-        // Statistics
-        quizStats,
-        answers,
+        addEventListener,
 
         // Navigation helpers
         isFirstQuestion: questionIndex === 0,
@@ -453,12 +361,9 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
         isTransitioning,
         question,
         questions.length,
-        readyUids,
+        jointQuizUids,
+        isCurrentUserJoined,
         imReady,
-        submitAnswer,
-        getUserAnswer,
-        getQuestionAnswers,
-        getUserStats,
         isHost,
         startQuiz,
         nextQuiz,
@@ -468,13 +373,16 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
         resumeQuiz,
         jumpToQuestion,
         setAutoPlay,
-        quizStats,
-        answers
+        addEventListener
     ]);
 
     return (
         <QuizContext.Provider value={valueContext}>
-            {children}
+            <QuizAnswersProvider yRoom={yRoom}>
+                <RecordsProvider yRoom={yRoom}>
+                    {children}
+                </RecordsProvider>
+            </QuizAnswersProvider>
         </QuizContext.Provider>
     );
 }

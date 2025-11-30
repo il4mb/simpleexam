@@ -6,7 +6,7 @@ import { useParticipants } from '@/hooks/useParticipants';
 import { useQuiz } from '@/hooks/useQuiz';
 import AvatarCompact from '../avatars/AvatarCompact';
 import { getColor } from '@/theme/colors';
-import { Check, RadioButtonUnchecked, EmojiEvents } from '@mui/icons-material';
+import { Check, RadioButtonUnchecked } from '@mui/icons-material';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 
 export default function ReadyParticipants() {

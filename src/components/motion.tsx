@@ -1,4 +1,4 @@
-import { Box, Button, Card, CardContent, Dialog, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Box, Button, Card, CardContent, Chip, Dialog, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { motion, Variants } from "motion/react";
 
 export const MotionTypography = motion.create(Typography);
@@ -10,6 +10,7 @@ export const MotionBox = motion.create(Box);
 export const MotionStack = motion.create(Stack);
 export const MotionCard = motion.create(Card);
 export const MotionCardContent = motion.create(CardContent);
+export const MotionChip = motion.create(Chip);
 
 
 export const containerVariants: Variants = {

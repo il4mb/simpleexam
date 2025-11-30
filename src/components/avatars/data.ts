@@ -1,13 +1,10 @@
 import {
     adventurer,
     avataaars,
-    bigEars,
     croodles,
     lorelei,
     micah,
     pixelArt,
-    shapes,
-    thumbs,
 } from "@dicebear/collection";
 
 export const collectionMap = {
