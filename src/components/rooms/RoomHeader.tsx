@@ -282,24 +282,58 @@ export default function RoomHeader({ }: QuizHeaderProps) {
                                             />
                                         )}
 
-                                        <AnimatePresence mode={"sync"}>
-                                            {room.enableLeaderboard && (
-                                                <MotionChip
-                                                    key={"leaderboard-feture"}
-                                                    initial={{ x: -20, opacity: 0 }}
-                                                    animate={{ x: 0, opacity: 1 }}
-                                                    exit={{ x: -20, opacity: 0 }}
-                                                    label={<><LeaderboardRounded /> Leaderboard</>} />
-                                            )}
-                                            {room.enableAiExpression && (
-                                                <MotionChip
-                                                    key={"video-feture"}
-                                                    initial={{ x: -20, opacity: 0 }}
-                                                    animate={{ x: 0, opacity: 1 }}
-                                                    exit={{ x: -20, opacity: 0 }}
-                                                    label={<><VideoCameraFront /> Facecam</>} />
-                                            )}
-                                        </AnimatePresence>
+                                        <Stack direction={"row"} gap={1}>
+                                            <AnimatePresence mode={"sync"}>
+                                                {room.enableLeaderboard && (
+                                                    <MotionChip
+                                                        key={"leaderboard-feture"}
+                                                        initial={{ x: -20, opacity: 0 }}
+                                                        animate={{ x: 0, opacity: 1 }}
+                                                        exit={{ x: -20, opacity: 0 }}
+                                                        label={
+                                                            <Stack direction={"row"} alignItems={"center"} spacing={0.5}>
+                                                                <LeaderboardRounded />
+                                                                <Typography
+                                                                    component={"span"}
+                                                                    sx={{
+                                                                        verticalAlign: 'baseline',
+                                                                        fontSize: 10,
+                                                                        display: {
+                                                                            xs: 'none',
+                                                                            sm: 'inline-block'
+                                                                        }
+                                                                    }}>
+                                                                    Leaderboard
+                                                                </Typography>
+                                                            </Stack>
+                                                        } />
+                                                )}
+                                                {room.enableAiExpression && (
+                                                    <MotionChip
+                                                        key={"video-feture"}
+                                                        initial={{ x: -20, opacity: 0 }}
+                                                        animate={{ x: 0, opacity: 1 }}
+                                                        exit={{ x: -20, opacity: 0 }}
+                                                        label={
+                                                            <Stack direction={"row"} alignItems={"center"} spacing={0.5}>
+                                                                <VideoCameraFront />
+                                                                <Typography
+                                                                    component={"span"}
+                                                                    sx={{
+                                                                        verticalAlign: 'baseline',
+                                                                        fontSize: 10,
+                                                                        display: {
+                                                                            xs: 'none',
+                                                                            sm: 'inline-block'
+                                                                        }
+                                                                    }}>
+                                                                    Facecam
+                                                                </Typography>
+                                                            </Stack>
+                                                        } />
+                                                )}
+                                            </AnimatePresence>
+                                        </Stack>
                                     </Stack>
                                 </Stack>
                             </Stack>

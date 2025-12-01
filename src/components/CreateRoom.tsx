@@ -236,9 +236,9 @@ export default function CreateRoom() {
                 size="large"
                 fullWidth
                 sx={{
-                    py: 3,
+                    py: { xs: 2, md: 3 },
                     borderRadius: 3,
-                    fontSize: '1.3rem',
+                    fontSize: { xs: '3.5vw', md: '1.3rem' },
                     fontWeight: 'bold',
                     textTransform: 'none',
                 }}
@@ -246,7 +246,7 @@ export default function CreateRoom() {
                     scale: 1.05,
                 }}
                 whileTap={{ scale: 0.95 }}>
-                <PlayArrow sx={{ mr: 2, fontSize: 30 }} />
+                <PlayArrow sx={{ mr: 2, fontSize: 30, display: { xs: 'none', sm: "block" } }} />
                 Buat Ruang Quiz Baru 🚀
             </MotionButton>
 

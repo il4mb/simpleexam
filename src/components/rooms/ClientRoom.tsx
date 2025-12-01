@@ -10,6 +10,7 @@ import CurrentUserStats from '../stats/CurrentUserStats';
 import Participants from './Participants';
 import ExpressionDetector from '@/contexts/ExpressionDetector';
 import { useQuiz } from '@/hooks/useQuiz';
+import { useAnswers } from '@/hooks/useAnswers';
 
 export interface ClientRoomProps {
     room: RoomData;
@@ -17,6 +18,7 @@ export interface ClientRoomProps {
 export default function ClientRoom({ room }: ClientRoomProps) {
 
     const { isCurrentUserJoined } = useQuiz();
+    const { answers } = useAnswers();
     const isInPlay = ["paused", "playing"].includes(room.status);
     const isPrepared = room.status == "prepared";
     const isInQuiz = (isInPlay && isCurrentUserJoined) || isPrepared;
@@ -36,7 +38,7 @@ export default function ClientRoom({ room }: ClientRoomProps) {
                         <Grid container spacing={4} sx={{ mb: 5 }}>
                             <Grid size={{ xs: 12, md: 8 }}>
                                 <CurrentUserStats />
-                                {room.enableLeaderboard && (
+                                {Boolean(room.enableLeaderboard && answers.length > 0) && (
                                     <>
                                         <Box py={3} />
                                         <Box sx={{ textAlign: 'center', mb: 6 }}>

@@ -33,7 +33,7 @@ export default function Home() {
                     justifyContent: 'center',
                     py: 4
                 }}>
-                    <Stack spacing={4} sx={{ width: '100%', alignItems: 'center' }}>
+                    <Stack gap={4} flexBasis={550}>
 
                         {user && (
                             <EditProfileDialog
@@ -55,32 +55,32 @@ export default function Home() {
                                 } />
                         )}
 
-                        <MotionBox
+
+                        <MotionStack
                             initial={{ scale: 0.8, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             transition={{ duration: 0.8, type: "spring" }}
-                            sx={{ textAlign: 'center' }}>
+                            justifyContent={"center"}
+                            alignItems={"center"}
+                            sx={{ textAlign: 'center', mt: { xs: 15, md: 5 } }}>
+                            {/* DESKTOP */}
                             <Typography
                                 variant="h1"
                                 sx={{
-                                    fontSize: { xs: '3.5rem', md: '5rem' },
+                                    fontSize: { xs: '13vw', md: '8rem' },
                                     fontWeight: 900,
-                                    background: 'linear-gradient(45deg, #FF6B6B, #4ECDC4, #FFD166)',
-                                    backgroundClip: 'text',
-                                    WebkitBackgroundClip: 'text',
-                                    color: 'transparent',
-                                    mb: 2
+                                    color: '#5799fdff',
                                 }}>
-                                EduDo
+                                Edu
                                 <Typography
                                     component={"span"}
                                     sx={{
-                                        fontSize: { xs: '3.5rem', md: '5rem' },
+                                        fontSize: { xs: '13vw', md: '8rem' },
                                         fontWeight: 900,
-                                        textDecoration: "line-through",
-                                        textDecorationColor: "#9c1717ff"
-                                    }}>Exam
-                                </Typography> | Quiz
+                                        color: "#ff5e01ff"
+                                    }}>Do
+                                </Typography>
+                                Exam
                             </Typography>
 
                             <Typography
@@ -89,23 +89,27 @@ export default function Home() {
                                     color: 'white',
                                     fontWeight: 300,
                                     textShadow: '0 2px 10px rgba(0,0,0,0.3)',
-                                    maxWidth: 600
+                                    maxWidth: 600,
+                                    textAlign: "center",
+                                    fontSize: { xs: '2.5vw', md: '1rem' },
                                 }}>
                                 Turn boring exams into epic gaming sessions! 🚀
                             </Typography>
-                        </MotionBox>
-                        <MotionBox
+                        </MotionStack>
+
+                        <MotionStack
                             initial={{ y: 100, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             transition={{ duration: 0.8, delay: 0.3 }}
-                            sx={{ p: 10 }}>
+                            sx={{ p: { xs: 3, sm: 10 }, flex: 1, }}>
 
-                            <Stack spacing={4}>
+                            <Stack spacing={4} flex={1}>
                                 <CreateRoom />
                                 <MotionBox
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
-                                    transition={{ delay: 0.6 }}>
+                                    transition={{ delay: 0.6 }}
+                                    sx={{ flex: 1, }}>
                                     <Typography
                                         variant="h6"
                                         sx={{
@@ -121,7 +125,7 @@ export default function Home() {
                                             display: 'flex',
                                             gap: 1,
                                             alignItems: 'center',
-                                            flexWrap:  "wrap"
+                                            flexWrap: { xs: "wrap", sm: "nowrap" },
                                         }}>
                                         <TextField
                                             fullWidth
@@ -129,7 +133,6 @@ export default function Home() {
                                             value={examCode}
                                             onChange={(e) => setExamCode(e.target.value)}
                                             sx={{
-                                                flexBasis: 200,
                                                 '& .MuiOutlinedInput-root': {
                                                     color: 'white',
                                                     borderRadius: 2,
@@ -152,7 +155,7 @@ export default function Home() {
                                                 px: 3,
                                                 py: 1.2,
                                                 borderRadius: 2,
-                                                // background: 'linear-gradient(45deg, #4ECDC4, #118AB2)'
+                                                ml: 'auto'
                                             }}
                                             whileHover={{ scale: 1.05 }}
                                             whileTap={{ scale: 0.95 }}>
@@ -199,7 +202,7 @@ export default function Home() {
                                 </MotionBox>
                             </Stack>
 
-                        </MotionBox>
+                        </MotionStack>
                         <MotionBox
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
