@@ -1,26 +1,17 @@
 import { useCallback, useState } from 'react';
-import {
-    Stack,
-    Typography,
-    Button,
-    TextField,
-    Card,
-    CardContent,
-    Box,
-    Chip,
-    IconButton,
-} from '@mui/material';
-import { Add, ExpandLess } from '@mui/icons-material';
+import { Stack, Typography, Button, TextField, Card, CardContent, Box, Chip, IconButton, } from '@mui/material';
+import { Add, DrawRounded, ExpandLess } from '@mui/icons-material';
 import { MotionBox } from '@/components/motion';
 import { Reorder } from 'framer-motion';
 import QuestionCard from './QuestionCard';
 import { useQuestions } from '@/contexts/QuestionsProvider';
 import { Question } from '@/types';
+import QuestionImports from './QuestionImports';
 
 export interface QuizProps { }
 
 export default function QuestionEditor({ }: QuizProps) {
-    
+
     const { questions, addQuestion, updateQuestion, removeQuestion, reorder } = useQuestions();
     const [expanded, setExpanded] = useState<string>();
     const [newQuestionText, setNewQuestionText] = useState<string>();
@@ -49,7 +40,6 @@ export default function QuestionEditor({ }: QuizProps) {
         <Stack spacing={3} mt={3}>
 
             <Card variant="outlined" sx={{
-                borderRadius: 0.4,
                 bgcolor: 'background.default',
                 border: 'none',
                 boxShadow: "0px 0px 0px 1px #91baf0ff, -6px 6px 0px #6197dfff"
@@ -61,16 +51,16 @@ export default function QuestionEditor({ }: QuizProps) {
                                 <Typography variant="h5" fontWeight="bold">
                                     Editor Quiz
                                 </Typography>
-                                <Button
-                                    variant="contained"
-                                    startIcon={<Add />}
-                                    onClick={() => setNewQuestionText('')}
-                                    sx={{
-                                        borderRadius: 3,
-                                        px: 3,
-                                    }}>
-                                    Tambah Soal
-                                </Button>
+                                <Stack direction={"row"} alignItems={"center"} spacing={1}>
+                                    <Button
+                                        variant="contained"
+                                        size='small'
+                                        startIcon={<DrawRounded />}
+                                        onClick={() => setNewQuestionText('')}>
+                                        Buat
+                                    </Button>
+                                    <QuestionImports />
+                                </Stack>
                             </Stack>
 
                             {questions.length > 0 ? (
@@ -156,7 +146,6 @@ export default function QuestionEditor({ }: QuizProps) {
                     <Card
                         variant="outlined"
                         sx={{
-                            borderRadius: 0.4,
                             border: 'none',
                             boxShadow: "0px 0px 0px 1px currentColor, -6px 6px 0px currentColor",
                         }}>

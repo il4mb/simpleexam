@@ -27,6 +27,7 @@ export interface QuestionOption {
     correct: boolean;
 }
 export interface Question {
+    order: number;
     id: string;
     text: string;
     multiple: boolean;

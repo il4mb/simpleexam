@@ -20,6 +20,8 @@ export type QuizState = {
     transition: boolean;
     transitionDelay: number;
     isTransitioning: boolean;
+    totalQuizableParticipant: number;
+    canPlayQuiz: boolean;
 
     // Questions
     currentQuestion: Question | undefined;

@@ -4,6 +4,7 @@ import { User } from "@/types";
 export interface Participant extends User {
     status: 'active' | 'pending' | 'left';
     joinedAt?: number;
+    lastSeen: number;
 }
 
 export type ParticipantsState = {

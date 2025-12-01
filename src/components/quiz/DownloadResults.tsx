@@ -8,7 +8,6 @@ import { useQuestions } from '@/contexts/QuestionsProvider';
 import { useAnswers } from '@/hooks/useAnswers';
 import { useExpressionResults } from '@/hooks/useExpressionResults';
 import { useParticipants } from '@/hooks/useParticipants';
-import { useQuiz } from '@/hooks/useQuiz';
 
 export default function DownloadResults() {
     const { room } = useRoomManager();
@@ -19,17 +18,17 @@ export default function DownloadResults() {
 
     // Calculate quiz statistics from available data
     const calculateQuizStats = () => {
-        const totalParticipants = participants.filter(p => 
+        const totalParticipants = participants.filter(p =>
             p.id !== room.createdBy && ["active", "left"].includes(p.status)
         ).length;
-        
+
         const totalAnswers = answers.length;
         const participantsWithAnswers = new Set(answers.map(a => a.uid)).size;
-        
-        const completionRate = totalParticipants > 0 ? 
+
+        const completionRate = totalParticipants > 0 ?
             (participantsWithAnswers / totalParticipants) * 100 : 0;
-            
-        const averageAnswersPerQuestion = questions.length > 0 ? 
+
+        const averageAnswersPerQuestion = questions.length > 0 ?
             totalAnswers / questions.length : 0;
 
         return {
@@ -71,7 +70,7 @@ export default function DownloadResults() {
             ['Total Participants', quizStats.totalParticipants],
             ['Total Questions', questions.length],
             ['Total Answers', quizStats.totalAnswers],
-            ['Participants with Answers', quizStats.totalParticipants > 0 ? 
+            ['Participants with Answers', quizStats.totalParticipants > 0 ?
                 `${Math.round(quizStats.completionRate)}%` : '0%'],
             ['Average Answers Per Question', quizStats.averageAnswersPerQuestion.toFixed(2)],
             ['', ''],
@@ -154,7 +153,6 @@ export default function DownloadResults() {
                 'Participant ID': answer.uid,
                 'Participant Name': participant?.name || 'Unknown',
                 'Question ID': answer.questionId,
-                'Question Text': question?.text || 'Unknown',
                 'Selected Options': answer.optionsId.join(', '),
                 'Correct Options': correctOptionIds.join(', '),
                 'Is Correct': isCorrect ? 'Yes' : 'No',
@@ -166,50 +164,20 @@ export default function DownloadResults() {
 
         // Sheet 4: Questions Overview
         const questionsOverview = questions.map((question, index) => {
-            const questionAnswers = getQuestionAnswers(question.id);
-            const correctOptionIds = question.options.filter(opt => opt.correct).map(opt => opt.id);
-            
-            let correctAnswers = 0;
-            let totalPointsEarned = 0;
-            let totalPossiblePoints = 0;
-
-            questionAnswers.forEach(answer => {
-                const hasCorrect = answer.optionsId.some(optId => correctOptionIds.includes(optId));
-                if (hasCorrect) correctAnswers++;
-
-                // Calculate points for this answer
-                answer.optionsId.forEach(optionId => {
-                    const option = question.options.find(opt => opt.id === optionId);
-                    if (option && option.correct) {
-                        totalPointsEarned += option.score || 1;
-                    }
-                });
-            });
-
-            // Calculate total possible points for this question
-            totalPossiblePoints = correctOptionIds.reduce((sum, optId) => {
-                const option = question.options.find(opt => opt.id === optId);
-                return sum + (option?.score || 1);
-            }, 0);
-
-            const accuracyRate = questionAnswers.length > 0 ? 
-                Math.round((correctAnswers / questionAnswers.length) * 100) : 0;
-
-            const pointsEfficiency = totalPossiblePoints > 0 ?
-                Math.round((totalPointsEarned / (totalPossiblePoints * questionAnswers.length)) * 100) : 0;
-
             return {
-                'Question Number': index + 1,
-                'Question ID': question.id,
-                'Text': question.text,
-                'Type': question.multiple ? 'Multiple Choice' : 'Single Choice',
-                'Total Options': question.options.length,
-                'Correct Options': correctOptionIds.join(', '),
-                'Total Answers': questionAnswers.length,
-                'Correct Answers': correctAnswers,
-                'Accuracy Rate (%)': accuracyRate,
-                'Total Points Earned': totalPointsEarned,
-                'Points Efficiency (%)': pointsEfficiency
+                question: {
+                    'No': index + 1,
+                    'QID': question.id,
+                    'Text': question.text,
+                    'Type': question.multiple ? 'Multiple Choice' : 'Single Choice',
+                    'Duration': question.duration + "s"
+                },
+                options: question.options.map(option => ({
+                    "QID": question.id,
+                    "Text": option.text,
+                    "Score": option.score,
+                    "Correct": option.correct ? 1 : 0
+                }))
             };
         });
 
@@ -267,8 +235,10 @@ export default function DownloadResults() {
 
             // Add Questions Overview Sheet
             if (data.questionsOverview.length > 0) {
-                const questionsSheet = XLSX.utils.json_to_sheet(data.questionsOverview);
-                XLSX.utils.book_append_sheet(workbook, questionsSheet, 'Questions Overview');
+                const questionsSheet = XLSX.utils.json_to_sheet(data.questionsOverview.map(d => d.question));
+                XLSX.utils.book_append_sheet(workbook, questionsSheet, 'Questions');
+                const questionsOptionsSheet = XLSX.utils.json_to_sheet(data.questionsOverview.map(d => d.options).flat());
+                XLSX.utils.book_append_sheet(workbook, questionsOptionsSheet, 'Questions Options');
             }
 
             // Add Expression Data Sheet (if there's data)

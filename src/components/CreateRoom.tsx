@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
     Button,
-    Dialog,
     DialogTitle,
     DialogContent,
     DialogActions,
@@ -26,13 +25,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Close,
     Groups,
-    Lock,
-    Public,
-    Timer,
-    EmojiEvents,
-    Palette,
     Quiz,
-    PlayArrow
+    PlayArrow,
+    EmojiEvents
 } from '@mui/icons-material';
 import { MotionButton } from './motion';
 import { nanoid } from 'nanoid';
@@ -40,10 +35,10 @@ import { collection, doc, setDoc } from 'firebase/firestore';
 import { firestore } from '@/libs/firebase';
 import { useRouter } from 'next/navigation';
 import { enqueueSnackbar } from 'notistack';
-import { RoomData, RoomType } from '@/types';
-import { MotionPaper, MotionDialog } from './motion';
+import { RoomData } from '@/types';
+import { MotionDialog } from './motion';
 import { useCurrentUser } from '@/contexts/SessionProvider';
-import { mainPersistence, ydoc } from '@/libs/yjs';
+import { mainPersistence } from '@/libs/yjs';
 
 
 type FormRoom = Omit<RoomData, 'id' | 'createdAt' | 'createdBy'>
@@ -56,25 +51,7 @@ const DEFAULT_FORM: FormRoom = {
     enableLeaderboard: true
 }
 
-const roomTypes = [
-    {
-        type: "drawing" as RoomType,
-        name: "Ruang Menggambar",
-        icon: <Palette />,
-        description: "Permainan menggambar dan menebak secara kolaboratif",
-        color: "#FF6B6B"
-    },
-    {
-        type: "quiz" as RoomType,
-        name: "Ruang Kuis",
-        icon: <Quiz />,
-        description: "Tantangan trivia dan pengetahuan yang interaktif",
-        color: "#4ECDC4"
-    }
-];
-
-
-const steps = ['Room Type', 'Settings', 'Review'];
+const steps = ['Room Settings', 'Review'];
 
 export default function CreateRoom() {
 
@@ -97,9 +74,7 @@ export default function CreateRoom() {
     };
 
     const handleNext = () => {
-        if (activeStep === 0 && !roomData.type) return;
-        if (activeStep === 1 && !roomData.name.trim()) return;
-
+        if (activeStep === 0 && !roomData.name.trim()) return;
         setActiveStep((prev) => prev + 1);
     };
 
@@ -126,13 +101,10 @@ export default function CreateRoom() {
             const roomsCollection = collection(firestore, "rooms");
             await setDoc(doc(roomsCollection, finalRoomData.id), finalRoomData);
             mainPersistence.set("room", finalRoomData as any);
-            const docs = ydoc.get("room");
-        
 
             enqueueSnackbar("Room created successfully!", { variant: "success" });
 
-            // FIXED: Use the correct type field
-            router.push(`/${finalRoomData.id}`);
+            router.push(`/quiz/${finalRoomData.id}`);
             handleClose();
         } catch (error: any) {
             console.error("Room creation error:", error);
@@ -150,76 +122,36 @@ export default function CreateRoom() {
                 return (
                     <Stack spacing={3}>
                         <Typography variant="h6" gutterBottom>
-                            Pilih Jenis Ruang
-                        </Typography>
-                        <Stack direction="row" spacing={2}>
-                            {roomTypes.map((roomType) => (
-                                <MotionPaper
-                                    key={roomType.type}
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    sx={{
-                                        flex: 1,
-                                        p: 3,
-                                        cursor: 'pointer',
-                                        border: roomData.type === roomType.type ?
-                                            `2px solid ${roomType.color}` :
-                                            '1px solid #e0e0e0',
-                                        borderRadius: 2,
-                                        textAlign: 'center',
-                                        background: roomData.type === roomType.type ?
-                                            `${roomType.color}10` : 'transparent',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                    onClick={() => updateRoomData('type', roomType.type)}>
-                                    <Box sx={{ color: roomType.color, mb: 2 }}>
-                                        {roomType.icon}
-                                    </Box>
-                                    <Typography variant="h6" gutterBottom>
-                                        {roomType.name}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                        {roomType.description}
-                                    </Typography>
-                                </MotionPaper>
-                            ))}
-                        </Stack>
-                    </Stack>
-                );
-
-            case 1:
-                return (
-                    <Stack spacing={3}>
-                        <Typography variant="h6" gutterBottom>
-                            Pengaturan Ruang
+                            Buat Ruang Quiz
                         </Typography>
 
                         <TextField
                             label="Nama Ruang"
                             value={roomData.name}
                             onChange={(e) => updateRoomData('name', e.target.value)}
-                            placeholder="Enter a creative Nama Ruang..."
+                            placeholder="Masukkan nama ruang quiz..."
                             fullWidth
+                            helperText={`${roomData.name.length}/50 karakter`}
                         />
 
-                        <Stack direction="row" spacing={2}>
+                        {/* <Stack direction="row" spacing={2}>
                             <FormControl fullWidth>
-                                <InputLabel>Max Players</InputLabel>
+                                <InputLabel>Jumlah Peserta</InputLabel>
                                 <Select
                                     value={roomData.maxPlayers}
-                                    label="Max Players"
+                                    label="Jumlah Peserta"
                                     onChange={(e) => updateRoomData('maxPlayers', e.target.value)}>
                                     {[5, 10, 20, 30, 40, 50].map(num => (
                                         <MenuItem key={num} value={num}>
                                             <Stack direction="row" alignItems="center" spacing={1}>
                                                 <Groups />
-                                                <span>{num} Players</span>
+                                                <span>{num} Peserta</span>
                                             </Stack>
                                         </MenuItem>
                                     ))}
                                 </Select>
                             </FormControl>
-                        </Stack>
+                        </Stack> */}
 
                         <Stack spacing={2}>
                             <FormControlLabel
@@ -229,25 +161,26 @@ export default function CreateRoom() {
                                         onChange={(e) => updateRoomData('enableLeaderboard', e.target.checked)}
                                     />
                                 }
-                                label="Enable Leaderboard"
+                                label="Aktifkan Leaderboard"
                             />
                         </Stack>
                     </Stack>
                 );
 
-            case 2:
+            case 1:
                 return (
                     <Stack spacing={3}>
                         <Typography variant="h6" gutterBottom>
-                            Review Penganturan
+                            Review Pengaturan
                         </Typography>
 
                         <Paper variant="outlined" sx={{ p: 3 }}>
                             <Stack spacing={2}>
-                                <Stack direction="row" justifyContent="space-between">
-                                    <Typography variant="body2" color="text.secondary">Room Type</Typography>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                    <Typography variant="body2" color="text.secondary">Jenis</Typography>
                                     <Chip
-                                        label={roomData.type === 'drawing' ? 'Drawing Room' : 'Quiz Room'}
+                                        icon={<Quiz />}
+                                        label="Quiz Room"
                                         color="primary"
                                         size="small"
                                     />
@@ -258,20 +191,33 @@ export default function CreateRoom() {
                                     <Typography variant="body2" fontWeight="500">{roomData.name}</Typography>
                                 </Stack>
 
-                                <Stack direction="row" justifyContent="space-between">
-                                    <Typography variant="body2" color="text.secondary">Max Players</Typography>
+                                {/* <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                    <Typography variant="body2" color="text.secondary">Maksimum Peserta</Typography>
                                     <Typography variant="body2" fontWeight="500">
                                         <Groups sx={{ fontSize: 16, verticalAlign: 'text-bottom', mr: 0.5 }} />
                                         {roomData.maxPlayers}
                                     </Typography>
-                                </Stack>
+                                </Stack> */}
 
-                                {roomData.enableLeaderboard && (
-                                    <Stack direction="row" justifyContent="space-between">
-                                        <Typography variant="body2" color="text.secondary">Leaderboard</Typography>
-                                        <EmojiEvents sx={{ color: 'gold', fontSize: 20 }} />
-                                    </Stack>
-                                )}
+                                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                    <Typography variant="body2" color="text.secondary">Leaderboard</Typography>
+                                    {roomData.enableLeaderboard ? (
+                                        <Chip
+                                            icon={<EmojiEvents />}
+                                            label="Aktif"
+                                            color="success"
+                                            size="small"
+                                            variant="outlined"
+                                        />
+                                    ) : (
+                                        <Chip
+                                            label="Nonaktif"
+                                            color="default"
+                                            size="small"
+                                            variant="outlined"
+                                        />
+                                    )}
+                                </Stack>
                             </Stack>
                         </Paper>
                     </Stack>
@@ -292,20 +238,16 @@ export default function CreateRoom() {
                 sx={{
                     py: 3,
                     borderRadius: 3,
-                    background: 'linear-gradient(45deg, #FF6B6B, #FFD166)',
                     fontSize: '1.3rem',
                     fontWeight: 'bold',
                     textTransform: 'none',
-                    boxShadow: '0 10px 30px rgba(255,107,107,0.4)'
                 }}
                 whileHover={{
                     scale: 1.05,
-                    boxShadow: '0 15px 40px rgba(255,107,107,0.6)',
-                    background: 'linear-gradient(45deg, #FFD166, #FF6B6B)'
                 }}
                 whileTap={{ scale: 0.95 }}>
                 <PlayArrow sx={{ mr: 2, fontSize: 30 }} />
-                Luncurkan Quizy Baru 🚀
+                Buat Ruang Quiz Baru 🚀
             </MotionButton>
 
             <MotionDialog
@@ -319,7 +261,7 @@ export default function CreateRoom() {
                 <DialogTitle>
                     <Stack direction="row" alignItems="center" justifyContent="space-between">
                         <Typography variant="h5" fontWeight="bold">
-                            Buat Ruang
+                            Buat Ruang Quiz
                         </Typography>
                         <IconButton onClick={handleClose}>
                             <Close />
@@ -372,16 +314,13 @@ export default function CreateRoom() {
                             sx={{
                                 background: 'linear-gradient(45deg, #4ecdc4, #44a08d)'
                             }}>
-                            Create Room
+                            Buat Ruang
                         </Button>
                     ) : (
                         <Button
                             variant="contained"
                             onClick={handleNext}
-                            disabled={
-                                (activeStep === 0 && !roomData.type) ||
-                                (activeStep === 1 && !roomData.name.trim())
-                            }>
+                            disabled={!roomData.name.trim()}>
                             Berikutnya
                         </Button>
                     )}

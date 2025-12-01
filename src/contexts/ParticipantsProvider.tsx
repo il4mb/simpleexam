@@ -5,7 +5,7 @@ import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 're
 import { useRoomManager } from './RoomManager';
 import * as Y from "yjs";
 import { useCurrentUser } from './SessionProvider';
-import { useYArray } from '@/hooks/useY';
+import { getYType, useYArray, useYMap } from '@/hooks/useY';
 import { enqueueSnackbar } from 'notistack';
 import { ydoc } from '@/libs/yjs';
 
@@ -20,26 +20,25 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
     const { room, isHost } = useRoomManager();
 
     const yParticipants = useMemo(() => {
-        let arr = yRoom.get("participants");
-        if (!arr) {
-            arr = new Y.Array<Participant>();
-            yRoom.set("participants", arr);
+        let partsMap = yRoom.get("participants");
+        if (getYType(partsMap) != "YMap") {
+            partsMap = new Y.Map<Record<string, Participant>>();
+            yRoom.set("participants", partsMap);
         }
-        return arr as Y.Array<Participant>;
+        return partsMap as Y.Map<Participant>;
     }, [yRoom]);
 
-    const participants = useYArray(yParticipants);
-    const currentUserParticipant = useMemo(() => user ? participants.find(u => u.id === user.id) : undefined, [user, participants]);
-    const isUserPending = currentUserParticipant?.status === 'pending';
+    const participantsMap = useYMap<Record<string, Participant>>(yParticipants as any);
+    const participants = useMemo<Participant[]>(() => Object.values(participantsMap), [participantsMap]);
+    const isTabActiveRef = useRef<boolean>(true);
     const pendingParticipants = useMemo(() => participants.filter(p => p.status === 'pending'), [participants]);
     const activeParticipants = useMemo(() => participants.filter(p => p.status === 'active'), [participants]);
     const leftParticipants = useMemo(() => participants.filter(p => p.status === 'left'), [participants]);
+    const currentUserParticipant = useMemo(() => user ? participantsMap[user.id] : undefined, [user, participantsMap]);
+    const isUserPending = currentUserParticipant?.status === 'pending';
     const [mounted, setMounted] = useState(false);
 
-    const getParticipant = useCallback((userId: string): Participant | undefined =>
-        participants.find(participant => participant.id === userId),
-        [participants]
-    );
+    const getParticipant = useCallback((userId: string): Participant | undefined => participantsMap[userId], [participantsMap]);
 
     const removeUser = useCallback((userId: string) => {
         if (!isHost) {
@@ -48,29 +47,19 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
             return;
         }
 
-        ydoc.transact(() => {
-            const users = yParticipants.toArray();
-            const userIndex = users.findIndex(u => u.id === userId);
-            if (userIndex !== -1) {
-                yParticipants.delete(userIndex, 1);
-                enqueueSnackbar(`User removed from room`, { variant: "success" });
+        yRoom.doc?.transact(() => {
+            if (yParticipants.has(userId)) {
+                yParticipants.delete(userId);
             }
         });
     }, [yParticipants, isHost]);
 
     const leftUser = useCallback((userId: string) => {
-        ydoc.transact(() => {
-            const users = yParticipants.toArray();
-            const userIndex = users.findIndex(u => u.id === userId);
-            if (userIndex !== -1) {
-                const userData = users[userIndex];
-                // Update status to left without removing
-                yParticipants.delete(userIndex, 1);
-                if (userData.status == "active") {
-                    yParticipants.insert(userIndex, [{
-                        ...userData,
-                        status: 'left',
-                    }]);
+        yRoom.doc?.transact(() => {
+            if (yParticipants.has(userId)) {
+                const participant = yParticipants.get(userId);
+                if (participant?.status == "active") {
+                    yParticipants.set(userId, { ...participant, status: "left" })
                 }
             }
         });
@@ -83,21 +72,15 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
             return;
         }
 
-        ydoc.transact(() => {
-            const users = yParticipants.toArray();
-            const userIndex = users.findIndex(u => u.id === userId && u.status === 'pending');
-            if (userIndex !== -1) {
-                const userData = users[userIndex];
-                yParticipants.delete(userIndex, 1);
-                yParticipants.insert(userIndex, [{
-                    ...userData,
-                    status: 'active',
-                    joinedAt: Date.now(),
-                }]);
-                enqueueSnackbar(`User approved`, { variant: "success" });
+        yRoom.doc?.transact(() => {
+            if (yParticipants.has(userId)) {
+                const participant = yParticipants.get(userId);
+                if (participant?.status == "pending") {
+                    yParticipants.set(userId, { ...participant, status: "active" });
+                }
             }
         });
-    }, [yParticipants, isHost, user?.id]);
+    }, [yParticipants, isHost]);
 
     const rejectUser = useCallback((userId: string) => {
         if (!isHost) {
@@ -106,12 +89,9 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
             return;
         }
 
-        ydoc.transact(() => {
-            const users = yParticipants.toArray();
-            const userIndex = users.findIndex(u => u.id === userId && u.status === 'pending');
-            if (userIndex !== -1) {
-                yParticipants.delete(userIndex, 1);
-                enqueueSnackbar(`User rejected`, { variant: "info" });
+        yRoom.doc?.transact(() => {
+            if (yParticipants.has(userId)) {
+                yParticipants.delete(userId);
             }
         });
     }, [yParticipants, isHost]);
@@ -122,20 +102,12 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
             return;
         }
 
-        ydoc.transact(() => {
-            const users = yParticipants.toArray();
+        yRoom.doc?.transact(() => {
+            const users = Array.from(yParticipants.values());
             let approvedCount = 0;
-
-            // Process in reverse to maintain correct indices
-            for (let i = users.length - 1; i >= 0; i--) {
-                const userData = users[i];
-                if (userData.status === 'pending') {
-                    yParticipants.delete(i, 1);
-                    yParticipants.insert(i, [{
-                        ...userData,
-                        status: 'active',
-                        joinedAt: Date.now(),
-                    }]);
+            for (let user of users) {
+                if (user.status === 'pending') {
+                    yParticipants.set(user.id, { ...user, status: "active" });
                     approvedCount++;
                 }
             }
@@ -145,78 +117,127 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
                 enqueueSnackbar(`${approvedCount} users auto-approved`, { variant: "success" });
             }
         });
-    }, [yParticipants, isHost, user?.id]);
+    }, [yParticipants, isHost, yRoom]);
 
-
-    // Clean up duplicate entries in Yjs array
-    const cleanupDuplicates = useCallback(() => {
-        const uniqueMap = new Map<string, Participant>();
-        const users = yParticipants.toArray();
-
-        // Keep the most recent entry for each user
-        users.forEach(userData => {
-            const existing = uniqueMap.get(userData.id);
-            if (!existing || (userData.joinedAt || 0) > (existing.joinedAt || 0)) {
-                uniqueMap.set(userData.id, userData);
+    const updateLastSeen = useCallback((userId: string) => {
+        yRoom.doc?.transact(() => {
+            if (yParticipants.has(userId)) {
+                const participant = yParticipants.get(userId);
+                if (participant && participant.status != "pending") {
+                    yParticipants.set(userId, { ...participant, lastSeen: Date.now() })
+                }
             }
         });
-
-        // Replace the entire array with unique entries
-        const uniqueUsers = Array.from(uniqueMap.values());
-        if (uniqueUsers.length !== users.length) {
-            ydoc.transact(() => {
-                yParticipants.delete(0, yParticipants.length);
-                yParticipants.insert(0, uniqueUsers);
-            });
-            console.log(`Cleaned up ${users.length - uniqueUsers.length} duplicate entries`);
-        }
     }, [yParticipants]);
 
+    const checkInactiveUsers = useCallback(() => {
+        const now = Date.now();
+        const thirtySecondsAgo = now - 30000;
 
-    const participantsRef = useRef(participants);
+        yRoom.doc?.transact(() => {
+            const participants = Object.values(yParticipants.toJSON()) as Participant[];
+            for (const user of participants) {
+                if (user.status === 'active' && user.lastSeen < thirtySecondsAgo) {
+                    yParticipants.set(user.id, {
+                        ...user,
+                        status: "left"
+                    });
+                }
+            }
+        });
+    }, [yParticipants]);
+
+    // Consolidated version
     useEffect(() => {
-        console.log(participants);
-        participantsRef.current = participants;
-    }, [participants]);
+        if (!user?.id) return;
 
-    // Add user to participants with automatic reactivation for returning users
+        let lastSeenIntervalId: NodeJS.Timeout;
+        let inactivityCheckIntervalId: NodeJS.Timeout;
+
+        const updateIfTabActive = () => {
+            if (isTabActiveRef.current) {
+                updateLastSeen(user.id);
+            }
+        };
+
+        const checkInactiveIfTabActive = () => {
+            if (isTabActiveRef.current) {
+                checkInactiveUsers();
+            }
+        };
+
+        const setupIntervals = () => {
+            // Clear existing intervals
+            if (lastSeenIntervalId) clearInterval(lastSeenIntervalId);
+            if (inactivityCheckIntervalId) clearInterval(inactivityCheckIntervalId);
+
+            if (isTabActiveRef.current) {
+                // Update lastSeen every 15 seconds
+                lastSeenIntervalId = setInterval(updateIfTabActive, 15000);
+                // Check inactive users every 30 seconds
+                inactivityCheckIntervalId = setInterval(checkInactiveIfTabActive, 30000);
+
+                // Initial update
+                updateLastSeen(user.id);
+            }
+        };
+
+        // Setup intervals initially
+        setupIntervals();
+
+        const handleVisibilityChange = () => {
+            isTabActiveRef.current = !document.hidden;
+
+            if (!document.hidden) {
+                // Tab became active - update immediately
+                updateLastSeen(user.id);
+            }
+
+            setupIntervals(); // Restart intervals based on new visibility state
+        };
+
+        const handleUserInteraction = () => {
+            if (isTabActiveRef.current) {
+                updateLastSeen(user.id);
+            }
+        };
+
+        // Add event listeners
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        const events = ['click', 'keydown', 'mousemove'];
+        events.forEach(event => {
+            window.addEventListener(event, handleUserInteraction, { passive: true });
+        });
+
+        return () => {
+            // Cleanup
+            if (lastSeenIntervalId) clearInterval(lastSeenIntervalId);
+            if (inactivityCheckIntervalId) clearInterval(inactivityCheckIntervalId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            events.forEach(event => {
+                window.removeEventListener(event, handleUserInteraction);
+            });
+        };
+    }, [user?.id, updateLastSeen, checkInactiveUsers]);
+
+
     useEffect(() => {
         if (!user) return;
 
         const addUserToParticipants = () => {
+            yRoom.doc?.transact(() => {
 
-            // Check if user was previously in the room (any status)
-            const existingIndex = participants.findIndex(u => u.id === user.id);
-            const existing = participants[existingIndex];
-
-            if (isHost) {
-                if (existing?.id) {
-                    ydoc.transact(() => {
-                        yParticipants.delete(existingIndex, 1);
-                        yParticipants.insert(existingIndex, [{ ...user, status: "active" } as Participant]);
-                    });
+                const existing = yParticipants.get(user.id);
+                if (isHost) {
+                    yParticipants.set(user.id, { ...user, status: "active", lastSeen: Date.now() } as Participant);
                 } else {
-                    ydoc.transact(() => {
-                        yParticipants.push([{ ...user, status: "active" } as Participant]);
-                    });
+                    if (existing?.id && existing.status != "pending") {
+                        yParticipants.set(user.id, { ...user, status: "active", lastSeen: Date.now() } as Participant);
+                    } else {
+                        yParticipants.set(user.id, { ...user, status: "pending", lastSeen: Date.now() } as Participant);
+                    }
                 }
-            } else {
-                if (existing?.id) {
-                    ydoc.transact(() => {
-                        yParticipants.delete(existingIndex, 1);
-                        yParticipants.insert(existingIndex, [{ ...user, status: "active" } as Participant]);
-                    });
-                } else {
-                    ydoc.transact(() => {
-                        yParticipants.push([{
-                            ...user,
-                            status: "pending"
-                        } as Participant]);
-                    });
-                }
-            }
-
-            cleanupDuplicates();
+            });
         };
 
 
@@ -230,7 +251,7 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
             handleBeforeUnload();
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
-    }, [user?.id]);
+    }, [user, yParticipants, isHost, yRoom]);
 
     const values = useMemo(() => ({
         // All unique participants
@@ -253,13 +274,9 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
         pendingCount: pendingParticipants.length,
         leftCount: leftParticipants.length,
         // Helper functions
-        isUserActive: (userId: string) =>
-            participants.some(p => p.id === userId && p.status === 'active'),
-        isUserPending: (userId: string) =>
-            participants.some(p => p.id === userId && p.status === 'pending'),
-        isUserLeft: (userId: string) =>
-            participants.some(p => p.id === userId && p.status === 'left'),
-
+        isUserActive: (userId: string) => participants.some(p => p.id === userId && p.status === 'active'),
+        isUserPending: (userId: string) => participants.some(p => p.id === userId && p.status === 'pending'),
+        isUserLeft: (userId: string) => participants.some(p => p.id === userId && p.status === 'left'),
     }), [
         participants,
         activeParticipants,
@@ -272,7 +289,6 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
         rejectUser,
         autoApproveAll,
     ]);
-
 
     if (!mounted) return false;
 

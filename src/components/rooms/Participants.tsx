@@ -3,12 +3,14 @@
 import { useRoomManager } from '@/contexts/RoomManager';
 import { Badge, Stack, Typography, Chip, Box } from '@mui/material';
 import AvatarCompact from '../avatars/AvatarCompact';
-import { MotionIconButton, MotionStack } from "@/components/motion"
+import { MotionBox, MotionIconButton, MotionStack } from "@/components/motion"
 import { useCurrentUser } from '@/contexts/SessionProvider';
 import { Trash, Check, X, Crown, Clock } from 'lucide-react';
 import Tooltip from '../Tooltip';
 import { RoomData, User } from '@/types';
 import { useParticipants } from '@/hooks/useParticipants';
+import { Remove } from '@mui/icons-material';
+import EditProfileDialog from '../EditProfileDialog';
 
 export default function Participants() {
 
@@ -46,7 +48,7 @@ export default function Participants() {
                     )}
                 </Typography>
             </Stack>
-            
+
             {/* Pending Participants Section (Host Only) */}
             {isHost && pendingParticipants.length > 0 && (
                 <Stack spacing={1} sx={{ mt: 2 }}>
@@ -152,7 +154,17 @@ export default function Participants() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 }}>
 
-                        <ParticipantAvatar client={client} room={room} />
+                        {client.id === currentUser?.id ? (
+                            <EditProfileDialog handler={
+                                <Tooltip title={"Sunting profile kamu"}>
+                                    <MotionBox initial={{ scale: 1 }} whileHover={{ scale: 1.25 }}>
+                                        <ParticipantAvatar client={client} room={room} />
+                                    </MotionBox>
+                                </Tooltip>
+                            } />
+                        ) : (
+                            <ParticipantAvatar client={client} room={room} />
+                        )}
 
                         <Box flex={1}>
                             <Typography fontSize={16} fontWeight={600}>
@@ -178,7 +190,7 @@ export default function Participants() {
                                     onClick={() => handleRemoveUser(client.id)}
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}>
-                                    <Trash size={16} />
+                                    <Remove />
                                 </MotionIconButton>
                             </Tooltip>
                         )}
@@ -191,8 +203,6 @@ export default function Participants() {
                     </Typography>
                 )}
             </Stack>
-
-            {/* Current User Pending Status */}
             {currentUser && !isHost && participants.find(p => p.id === currentUser.id)?.status === 'pending' && (
                 <Box
                     sx={{
@@ -208,8 +218,6 @@ export default function Participants() {
                     </Typography>
                 </Box>
             )}
-
-
         </Stack>
     );
 }

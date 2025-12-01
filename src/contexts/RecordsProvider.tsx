@@ -1,61 +1,63 @@
 import { useQuiz } from '@/hooks/useQuiz';
-import { Context, ExprRecord } from '@/hooks/useRecords';
-import { useYMap } from '@/hooks/useY';
-import { ReactNode, useCallback, useEffect, useMemo } from 'react';
+import { Context } from '@/hooks/useRecords';
+import { getYType, useYMap } from '@/hooks/useY';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import * as Y from "yjs";
-
 
 export interface RecordsProviderProps {
     children?: ReactNode;
     yRoom: Y.Map<any>;
+    isHost: boolean;
 }
-export default function RecordsProvider({ children, yRoom }: RecordsProviderProps) {
+
+export default function RecordsProvider({ children, yRoom, isHost }: RecordsProviderProps) {
 
     const { addEventListener } = useQuiz();
+
+    // ensure yRoom.records exists
     const yRecords = useMemo<Y.Map<any>>(() => {
-        let recordsMap = yRoom.get("records");
-        if (!recordsMap) {
-            recordsMap = new Y.Map();
+        let rec = yRoom.get("records");
+        if (getYType(rec) !== "YMap") {
             yRoom.doc?.transact(() => {
-                yRoom.set("records", recordsMap);
+                rec = new Y.Map();
+                yRoom.set("records", rec);
             });
         }
-        return recordsMap;
+        return rec as Y.Map<any>;
     }, [yRoom]);
-    const yExpressions = useMemo<Y.Map<any>>(() => {
-        let expressionsMap = yRecords.get("expressions");
-        if (!expressionsMap) {
-            expressionsMap = new Y.Map();
-            yRoom.doc?.transact(() => {
-                yRecords.set("expressions", expressionsMap);
+
+    // auto subscribe Y.Map → React state
+    const records = useYMap<Record<string, any>>(yRecords, true);
+
+    // ensure each record key is Y.Map
+    const getRecord = useCallback((key: string): Y.Map<any> => {
+        let map = yRecords.get(key);
+        if (getYType(map) !== "YMap") {
+            yRecords.doc?.transact(() => {
+                map = new Y.Map();
+                yRecords.set(key, map);
             });
         }
-        return expressionsMap;
+        return map as Y.Map<any>;
     }, [yRecords]);
-    const records = useYMap<Record<string, any>>(yRecords);
-    const expsRecords = useYMap<Record<string, ExprRecord>>(yExpressions);
-    const expressions = useMemo(() => Object.values(expsRecords), [expsRecords]);
 
-    const transaction = useCallback((callback: () => void) => {
-        yRoom.doc?.transact(callback);
-    }, [yRoom]);
-
-
+    // host-only: reset all records
     useEffect(() => {
+        if (!isHost) return;
         return addEventListener("start", () => {
             yRoom.doc?.transact(() => {
-                yRecords.clear();
+                const rec = yRoom.get("records") as Y.Map<any>;
+                rec.clear();
+                // yRoom.set("records", rec);
             });
         });
-    }, []);
+    }, [isHost, addEventListener, yRoom]);
 
     const values = useMemo(() => ({
         records,
-        expressions,
         yRecords,
-        yExpressions,
-        transaction
-    }), [records, expressions, yRecords, yExpressions, transaction]);
+        getRecord
+    }), [records, yRecords, getRecord]);
 
     return (
         <Context.Provider value={values}>

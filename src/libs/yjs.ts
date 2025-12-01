@@ -11,12 +11,7 @@ export const mainPersistence = new IndexeddbPersistence('Quezy-main', ydoc);
 mainPersistence.on('synced', () => {
     console.log('Main document data loaded from IndexedDB');
 });
+
+
 const wsProvider = new WebsocketProvider(WEBSOCKET_HOST, 'Quezy-main', ydoc);
 export const awareness = wsProvider.awareness;
-
-awareness.setLocalStateField('user', {
-    id: '',
-    name: '',
-    isOnline: false,
-    lastSeen: Date.now()
-});

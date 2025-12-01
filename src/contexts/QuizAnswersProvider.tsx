@@ -17,8 +17,9 @@ type TAnswersRoom = {
 export interface AnswersProviderProps {
     children?: ReactNode;
     yRoom: Y.Map<any>;
+    isHost: boolean;
 }
-export default function QuizAnswersProvider({ children, yRoom }: AnswersProviderProps) {
+export default function QuizAnswersProvider({ children, yRoom, isHost }: AnswersProviderProps) {
 
     const { addEventListener } = useQuiz();
     const { questions } = useQuestions();
@@ -92,6 +93,12 @@ export default function QuizAnswersProvider({ children, yRoom }: AnswersProvider
         };
     }, [answers]);
 
+    const clearAnswers = useCallback(() => {
+        if(!isHost) return;
+        yRoom.doc?.transact(() => {
+            yAnswers.clear();
+        });
+    }, [yAnswers, isHost]);
 
     // Quiz statistics
     const quizStats = useMemo(() => {
@@ -112,18 +119,13 @@ export default function QuizAnswersProvider({ children, yRoom }: AnswersProvider
         };
     }, [questions, question]);
 
-
     useEffect(() => {
-        return addEventListener("start", () => {
-            yAnswers.clear();
-        });
-    }, []);
-    useEffect(() => {
-        return addEventListener("initializing", () => {
-            yAnswers.clear();
-        });
+        return addEventListener("start", clearAnswers);
     }, []);
 
+    useEffect(() => {
+        return addEventListener("initializing", clearAnswers);
+    }, []);
 
     const values = useMemo(() => ({
         answers,
@@ -131,16 +133,17 @@ export default function QuizAnswersProvider({ children, yRoom }: AnswersProvider
         getQuestionAnswers,
         getUserAnswer,
         getUserStats,
-        submitAnswer
+        submitAnswer,
+        clearAnswers
     }), [
         answers,
         quizStats,
         getQuestionAnswers,
         getUserAnswer,
         getUserStats,
-        submitAnswer
-    ])
-
+        submitAnswer,
+        clearAnswers
+    ]);
 
     return (
         <Context.Provider value={values}>

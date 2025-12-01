@@ -1,5 +1,5 @@
 import { Box, Button, Card, CardContent, Chip, Dialog, IconButton, Paper, Stack, Typography } from "@mui/material";
-import { motion, Variants } from "motion/react";
+import { motion, stagger, Variants } from "motion/react";
 
 export const MotionTypography = motion.create(Typography);
 export const MotionDialog = motion.create(Dialog);
@@ -18,20 +18,20 @@ export const containerVariants: Variants = {
     visible: {
         opacity: 1,
         transition: {
-            delayChildren: 0.3,
-            staggerChildren: 0.2
+            delayChildren: stagger(0.2, { startDelay: 0.2 }),
+            staggerChildren: 0.2,
         }
     }
 };
 
 export const itemVariants: Variants = {
-    initial: { y: 20, opacity: 0 },
-    animate: {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
         y: 0,
         opacity: 1,
         transition: {
             type: "spring",
-            stiffness: 100
+            stiffness: 400
         }
     }
 };
@@ -50,6 +50,7 @@ export const pulseVariants: Variants = {
 export const floatingVariants: Variants = {
     float: {
         y: [0, -10, 0],
+        rotateX: [-15, 15, -15],
         transition: {
             duration: 3,
             repeat: Infinity,

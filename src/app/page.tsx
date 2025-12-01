@@ -1,57 +1,30 @@
 'use client'
 
 import { Container, Stack, TextField, Typography, Box } from "@mui/material";
-import { Timeline, Gamepad, Stars, FlashOn, AcUnit } from "@mui/icons-material";
 import { useState } from "react";
 import CreateRoom from "@/components/CreateRoom";
-import { MotionBox, MotionButton } from "@/components/motion";
+import { MotionBox, MotionButton, MotionStack } from "@/components/motion";
 import { useCurrentUser } from "@/contexts/SessionProvider";
 import AvatarCompact from "@/components/avatars/AvatarCompact";
+import { enqueueSnackbar } from "notistack";
+import { useRouter } from "next/navigation";
+import EditProfileDialog from "@/components/EditProfileDialog";
 
 export default function Home() {
 
+    const router = useRouter();
     const user = useCurrentUser();
     const [examCode, setExamCode] = useState("");
-    const [isHovered, setIsHovered] = useState(false);
 
-    const floatingShapes = [
-        { icon: <AcUnit />, color: "#FF6B6B", delay: 0 },
-        { icon: <Timeline />, color: "#4ECDC4", delay: 0.5 },
-        { icon: <Gamepad />, color: "#FFD166", delay: 1 },
-        { icon: <Stars />, color: "#6A0572", delay: 1.5 },
-        { icon: <FlashOn />, color: "#118AB2", delay: 2 }
-    ];
+    const handleNavigate = () => {
+        if (examCode.length < 6) {
+            return enqueueSnackbar("Kode tidak valid!", { variant: "error" });
+        }
+        router.push(`/quiz/${examCode}`);
+    }
 
     return (
         <Box>
-            {floatingShapes.map((shape, index) => (
-                <MotionBox
-                    key={index}
-                    sx={{
-                        position: 'absolute',
-                        color: shape.color,
-                        fontSize: '2rem',
-                        opacity: 0.7
-                    }}
-                    initial={{
-                        x: Math.random() * window.innerWidth,
-                        y: Math.random() * window.innerHeight,
-                        rotate: 0
-                    }}
-                    animate={{
-                        y: [null, -100, 100],
-                        x: [null, 50, -50],
-                        rotate: 360
-                    }}
-                    transition={{
-                        duration: 8 + index * 2,
-                        repeat: Infinity,
-                        delay: shape.delay,
-                        ease: "easeInOut"
-                    }}>
-                    {shape.icon}
-                </MotionBox>
-            ))}
             <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 2 }}>
                 <Box sx={{
                     minHeight: '100vh',
@@ -63,12 +36,23 @@ export default function Home() {
                     <Stack spacing={4} sx={{ width: '100%', alignItems: 'center' }}>
 
                         {user && (
-                            <Stack justifyContent={"center"} alignItems={"center"} sx={{ position: "absolute", top: 0, right: 0, p: 2 }}>
-                                <AvatarCompact seed={user?.avatar} size={60} />
-                                <Typography fontSize={18} fontWeight={800}>
-                                    {user.name}
-                                </Typography>
-                            </Stack>
+                            <EditProfileDialog
+                                handler={
+                                    <MotionStack
+                                        initial={{ y: 20, opacity: 0 }}
+                                        animate={{ y: 0, opacity: 1 }}
+                                        justifyContent={"center"}
+                                        alignItems={"center"}
+                                        sx={{ position: "absolute", top: 0, right: 0, p: 2 }}>
+                                        <MotionBox whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 1.1 }}>
+                                            <AvatarCompact seed={user?.avatar} size={60} />
+                                        </MotionBox>
+                                        <Typography fontSize={18} fontWeight={800}>
+                                            {user.name}
+                                        </Typography>
+                                    </MotionStack>
+                                } />
                         )}
 
                         <MotionBox
@@ -85,10 +69,18 @@ export default function Home() {
                                     backgroundClip: 'text',
                                     WebkitBackgroundClip: 'text',
                                     color: 'transparent',
-                                    textShadow: '0 0 30px rgba(255,255,255,0.3)',
                                     mb: 2
                                 }}>
-                                EduDoExam | Quiz
+                                EduDo
+                                <Typography
+                                    component={"span"}
+                                    sx={{
+                                        fontSize: { xs: '3.5rem', md: '5rem' },
+                                        fontWeight: 900,
+                                        textDecoration: "line-through",
+                                        textDecorationColor: "#9c1717ff"
+                                    }}>Exam
+                                </Typography> | Quiz
                             </Typography>
 
                             <Typography
@@ -102,14 +94,10 @@ export default function Home() {
                                 Turn boring exams into epic gaming sessions! 🚀
                             </Typography>
                         </MotionBox>
-
-                        {/* Interactive Main Card */}
                         <MotionBox
                             initial={{ y: 100, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             transition={{ duration: 0.8, delay: 0.3 }}
-                            onHoverStart={() => setIsHovered(true)}
-                            onHoverEnd={() => setIsHovered(false)}
                             sx={{ p: 10 }}>
 
                             <Stack spacing={4}>
@@ -132,7 +120,8 @@ export default function Home() {
                                         sx={{
                                             display: 'flex',
                                             gap: 1,
-                                            alignItems: 'center'
+                                            alignItems: 'center',
+                                            flexWrap:  "wrap"
                                         }}>
                                         <TextField
                                             fullWidth
@@ -140,6 +129,7 @@ export default function Home() {
                                             value={examCode}
                                             onChange={(e) => setExamCode(e.target.value)}
                                             sx={{
+                                                flexBasis: 200,
                                                 '& .MuiOutlinedInput-root': {
                                                     color: 'white',
                                                     borderRadius: 2,
@@ -155,13 +145,14 @@ export default function Home() {
                                         />
                                         <MotionButton
                                             variant="contained"
+                                            onClick={handleNavigate}
                                             sx={{
                                                 minWidth: 'auto',
                                                 whiteSpace: "nowrap",
                                                 px: 3,
                                                 py: 1.2,
                                                 borderRadius: 2,
-                                                background: 'linear-gradient(45deg, #4ECDC4, #118AB2)'
+                                                // background: 'linear-gradient(45deg, #4ECDC4, #118AB2)'
                                             }}
                                             whileHover={{ scale: 1.05 }}
                                             whileTap={{ scale: 0.95 }}>
@@ -209,8 +200,6 @@ export default function Home() {
                             </Stack>
 
                         </MotionBox>
-
-                        {/* Feature Highlights */}
                         <MotionBox
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}

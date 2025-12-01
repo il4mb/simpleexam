@@ -1,8 +1,9 @@
 import { adventurer } from '@dicebear/collection';
 import { createAvatar } from '@dicebear/core';
 import { Shuffle } from '@mui/icons-material';
-import { Box, Button, Stack } from '@mui/material';
+import { Box, Stack } from '@mui/material';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { MotionBox, MotionButton } from '../motion';
 
 const randomString = () => `${Math.random().toString(36).substring(2, 10)}-${Math.random().toString(36).substring(2, 10)}`;
 export interface AvatarEditorCompactProps {
@@ -20,13 +21,11 @@ export default function AvatarEditorCompact({ seed: externalSeed, onChange }: Av
     }, [seed]);
 
     const randomize = useCallback(() => {
-        setSeed(randomString());
-    }, [onChange]);
-
-    useEffect(() => {
         ignoreRef.current = true;
+        const seed = randomString();
+        setSeed(seed);
         onChange?.(seed);
-    }, [seed, onChange]);
+    }, [onChange]);
 
     useEffect(() => {
         if (!externalSeed) return;
@@ -34,13 +33,15 @@ export default function AvatarEditorCompact({ seed: externalSeed, onChange }: Av
             ignoreRef.current = false;
             return;
         }
-        setSeed(externalSeed);
+        setSeed(prev => prev == externalSeed ? prev : externalSeed);
     }, [externalSeed]);
 
     return (
         <Stack justifyContent={"center"} alignItems={"center"}>
-            <Box component={"img"} src={avatar} sx={{ width: 150, height: 150, pointerEvents: 'none' }} />
-            <Button startIcon={<Shuffle />} onClick={randomize} size={'small'}>Acak</Button>
+            <MotionBox key={avatar} initial={{ y: -50 }} animate={{ y: 0 }}>
+                <Box component={"img"} src={avatar} sx={{ width: 150, height: 150, pointerEvents: 'none' }} />
+            </MotionBox>
+            <MotionButton initial={{ y: -100 }} animate={{ y: 0 }} startIcon={<Shuffle />} onClick={randomize} size={'small'}>Acak</MotionButton>
         </Stack>
     );
 }

@@ -34,11 +34,11 @@ export default function QuestionStatsByExpression() {
 
     // Expression color mapping
     const getExpressionColor = (expression: string) => {
-        return EXPRESSION_MAP[expression].color || theme.palette.primary.main;
+        return EXPRESSION_MAP[expression]?.color || theme.palette.primary.main;
     };
 
     const getExpressionIcon = (expression: string) => {
-        return EXPRESSION_MAP[expression].emoji;
+        return EXPRESSION_MAP[expression]?.emoji;
     };
 
     // Calculate expression statistics for a question using raw counts

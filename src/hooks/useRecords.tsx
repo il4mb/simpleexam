@@ -9,10 +9,8 @@ export type ExprRecord = {
 
 export type RecordsState = {
     records: Record<string, any>;
-    expressions: ExprRecord[];
     yRecords: Y.Map<any>;
-    yExpressions: Y.Map<any>;
-    transaction: (callback: () => void) => void;
+    getRecord: (key: string) => Y.Map<any>;
 }
 
 export const Context = createContext<RecordsState | undefined>(undefined);

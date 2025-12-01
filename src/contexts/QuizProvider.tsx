@@ -11,6 +11,7 @@ import { useCreateEvents } from "@/hooks/useCreateEvents";
 import { enqueueSnackbar } from "notistack";
 import * as Y from "yjs";
 import RecordsProvider from './RecordsProvider';
+import { useParticipants } from '@/hooks/useParticipants';
 
 type TQuizRoom = {
     questionIndex?: number;
@@ -35,6 +36,7 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
     const { room, isHost, updateRoom } = useRoomManager<TQuizRoom>();
     const { questions } = useQuestions();
     const [roomStatus, setRoomStatus] = useState(room.status);
+    const { activeParticipants } = useParticipants();
 
     const yJointQuizUid = useMemo(() => {
         let arr = yRoom.get('readyUids');
@@ -47,6 +49,9 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
 
     const jointQuizUids = useYArray(yJointQuizUid);
     const isCurrentUserJoined = useMemo(() => Boolean(currentUser && jointQuizUids.includes(currentUser.id)), [currentUser?.id, jointQuizUids]);
+    const totalQuizableParticipant = useMemo(() => activeParticipants.filter(p => p.id != room.createdBy).length, [room, activeParticipants]);
+    const canPlayQuiz = useMemo(() => totalQuizableParticipant >= 3 && questions.length >= 5, [totalQuizableParticipant]);
+
     const transitionDelay = useMemo(() => room.enableLeaderboard ? 8000 : 4000, [room.enableLeaderboard]);
     const autoPlay = room.autoPlay === true;
     const questionIndex = typeof room.questionIndex === "number" ? room.questionIndex : -1;
@@ -89,6 +94,10 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
     }, [isHost, yRoom]);
 
     const startQuiz = useCallback(() => {
+        if (!canPlayQuiz) {
+            enqueueSnackbar("Quiz belum dapat dimulai, periksa minimum soal dan peserta.", { variant: "warning" });
+            return;
+        }
         if (!isHost) {
             console.warn("Non host attempted to start quiz");
             return;
@@ -102,7 +111,7 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
             yRoom.set("status", "playing");
             yRoom.set("quizTransition", false);
         });
-    }, [isHost, yRoom, emit]);
+    }, [isHost, yRoom, emit, canPlayQuiz]);
 
     const finishQuiz = useCallback(() => {
         if (!isHost) {
@@ -319,6 +328,8 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
         transition: Boolean(room.quizTransition),
         transitionDelay,
         isTransitioning,
+        totalQuizableParticipant,
+        canPlayQuiz,
 
         // Questions
         currentQuestion: question,
@@ -363,6 +374,8 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
         questions.length,
         jointQuizUids,
         isCurrentUserJoined,
+        totalQuizableParticipant,
+        canPlayQuiz,
         imReady,
         isHost,
         startQuiz,
@@ -378,8 +391,8 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
 
     return (
         <QuizContext.Provider value={valueContext}>
-            <QuizAnswersProvider yRoom={yRoom}>
-                <RecordsProvider yRoom={yRoom}>
+            <QuizAnswersProvider yRoom={yRoom} isHost={isHost}>
+                <RecordsProvider yRoom={yRoom} isHost={isHost}>
                     {children}
                 </RecordsProvider>
             </QuizAnswersProvider>

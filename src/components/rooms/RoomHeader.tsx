@@ -12,6 +12,7 @@ import RoomSettingButton from './RoomSettingButton';
 import Tooltip from '../Tooltip';
 import RoomQRButton from './RoomQRButton';
 import { AnimatePresence } from 'framer-motion';
+import { useParticipants } from '@/hooks/useParticipants';
 
 export interface QuizHeaderProps {
 
@@ -19,7 +20,9 @@ export interface QuizHeaderProps {
 export default function RoomHeader({ }: QuizHeaderProps) {
 
     const theme = useTheme();
+    const { activeParticipants } = useParticipants();
     const { room, isHost, updateRoom } = useRoomManager();
+    const totalActiveParticipants = activeParticipants.length;
 
     const copyRoomCode = () => {
         navigator.clipboard.writeText(room.id);
@@ -94,27 +97,30 @@ export default function RoomHeader({ }: QuizHeaderProps) {
         switch (room.status) {
             case 'waiting':
                 return (
-                    <Button
-                        onClick={handleStartQuiz}
-                        variant="contained"
-                        size="large"
-                        startIcon={<RocketLaunch />}
-                        sx={{
-                            background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
-                            borderRadius: 3,
-                            px: 4,
-                            py: 1.5,
-                            fontWeight: 'bold',
-                            fontSize: '1rem',
-                            boxShadow: '0 4px 20px rgba(76, 175, 80, 0.3)',
-                            '&:hover': {
-                                boxShadow: '0 6px 25px rgba(76, 175, 80, 0.5)',
-                                transform: 'translateY(-2px)',
-                            },
-                            transition: 'all 0.3s ease',
-                        }}>
-                        Mulai Kuis
-                    </Button>
+                    <Tooltip title={totalActiveParticipants >= 4 ? "Mulai Quiz" : "Untuk memulai setidaknya ada 4 peserta"}>
+                        <Button
+                            onClick={handleStartQuiz}
+                            variant="contained"
+                            size="large"
+                            startIcon={<RocketLaunch />}
+                            disabled={totalActiveParticipants < 4}
+                            sx={{
+                                background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+                                borderRadius: 3,
+                                px: 4,
+                                py: 1.5,
+                                fontWeight: 'bold',
+                                fontSize: '1rem',
+                                boxShadow: '0 4px 20px rgba(76, 175, 80, 0.3)',
+                                '&:hover': {
+                                    boxShadow: '0 6px 25px rgba(76, 175, 80, 0.5)',
+                                    transform: 'translateY(-2px)',
+                                },
+                                transition: 'all 0.3s ease',
+                            }}>
+                            {totalActiveParticipants < 4 ? "Kurang " + (4 - totalActiveParticipants) + " peserta lagi" : "Mulai Ulang Kuis"}
+                        </Button>
+                    </Tooltip>
                 );
 
             case 'playing':
@@ -169,27 +175,30 @@ export default function RoomHeader({ }: QuizHeaderProps) {
 
             case 'ended':
                 return (
-                    <Button
-                        onClick={handleStartQuiz}
-                        variant="contained"
-                        size="large"
-                        startIcon={<RocketLaunch />}
-                        sx={{
-                            background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
-                            borderRadius: 3,
-                            px: 4,
-                            py: 1.5,
-                            fontWeight: 'bold',
-                            fontSize: '1rem',
-                            boxShadow: '0 4px 20px rgba(33, 150, 243, 0.3)',
-                            '&:hover': {
-                                boxShadow: '0 6px 25px rgba(33, 150, 243, 0.5)',
-                                transform: 'translateY(-2px)',
-                            },
-                            transition: 'all 0.3s ease',
-                        }}>
-                        Mulai Ulang Kuis
-                    </Button>
+                    <Tooltip title={totalActiveParticipants >= 4 ? "Mulai Quiz" : "Untuk memulai setidaknya ada 4 peserta"}>
+                        <Button
+                            onClick={handleStartQuiz}
+                            variant="contained"
+                            size="large"
+                            startIcon={<RocketLaunch />}
+                            disabled={totalActiveParticipants < 4}
+                            sx={{
+                                background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
+                                borderRadius: 3,
+                                px: 4,
+                                py: 1.5,
+                                fontWeight: 'bold',
+                                fontSize: '1rem',
+                                boxShadow: '0 4px 20px rgba(33, 150, 243, 0.3)',
+                                '&:hover': {
+                                    boxShadow: '0 6px 25px rgba(33, 150, 243, 0.5)',
+                                    transform: 'translateY(-2px)',
+                                },
+                                transition: 'all 0.3s ease',
+                            }}>
+                            {totalActiveParticipants < 4 ? "Kurang " + (4 - totalActiveParticipants) + " peserta lagi" : "Mulai Ulang Kuis"}
+                        </Button>
+                    </Tooltip>
                 );
             case "prepared":
                 return (
@@ -264,12 +273,15 @@ export default function RoomHeader({ }: QuizHeaderProps) {
                                         <Typography variant="h4" fontWeight="bold">
                                             {room.name}
                                         </Typography>
-                                        <Chip
-                                            label={getStatusText(room.status)}
-                                            color={getStatusColor(room.status)}
-                                            variant="filled"
-                                            sx={{ fontWeight: 600, minWidth: 120, position: "absolute", top: 0, right: 0 }}
-                                        />
+                                        {["playing", "paused", "prepared"].includes(room.status) && (
+                                            <Chip
+                                                label={getStatusText(room.status)}
+                                                color={getStatusColor(room.status)}
+                                                variant="filled"
+                                                sx={{ fontWeight: 600, minWidth: 120, position: "absolute", top: 0, right: 0 }}
+                                            />
+                                        )}
+
                                         <AnimatePresence mode={"sync"}>
                                             {room.enableLeaderboard && (
                                                 <MotionChip

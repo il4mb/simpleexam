@@ -176,8 +176,9 @@ export default function QuizClientLobby() {
                                                                 sx={answerOptions.includes(option.id) ? {
                                                                     borderRadius: question?.multiple ? "10px" : '16px',
                                                                     color: answerOptions.includes(option.id) ? 'white' : 'text.primary',
-                                                                    outline: "3px dashed",
-                                                                    outlineColor: getColor(answerOptions.includes(option.id) ? "success" : "secondary")[400],
+                                                                    fontWeight: answerOptions.includes(option.id) ? 900 : 400,
+                                                                    //outline: "3px dashed",
+                                                                    //outlineColor: getColor(answerOptions.includes(option.id) ? "success" : "secondary")[400],
                                                                 } : {}}>
                                                                 <Box
                                                                     sx={{
@@ -197,7 +198,7 @@ export default function QuizClientLobby() {
                                                                     }}>
                                                                     {getOptionLetter(index)}
                                                                 </Box>
-                                                                <Typography variant="body1" sx={{ flex: 1, my: 0.7 }}>
+                                                                <Typography variant="body1" sx={{ flex: 1, my: 0.7, fontWeight: answerOptions.includes(option.id) ? 900 : 400, }} >
                                                                     {option.text}
                                                                 </Typography>
                                                             </Stack>
@@ -214,7 +215,7 @@ export default function QuizClientLobby() {
                             <Stack
                                 justifyContent={"center"}
                                 alignItems={"center"}
-                                sx={{
+                                sx={(theme) => ({
                                     position: "absolute",
                                     top: 0,
                                     left: 0,
@@ -223,7 +224,10 @@ export default function QuizClientLobby() {
                                     background: '#fff5',
                                     pointerEvents: 'all',
                                     backdropFilter: 'blur(8px)',
-                                }}>
+                                    ...theme.applyStyles("dark", {
+                                        background: '#0005',
+                                    })
+                                })}>
                                 <Stack justifyContent={"center"} alignItems={"center"} mb={1} spacing={2} color={"warning.main"}>
                                     <ClockAlert size={45} strokeWidth={3} />
                                     <MotionTypography fontWeight={800} fontSize={18}>

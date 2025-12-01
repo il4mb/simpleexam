@@ -20,6 +20,7 @@ export type AnswersContext = {
         averageTime: number;
     };
     submitAnswer: (questionId: string, optionsId: string[]) => void;
+    clearAnswers: () => void;
 }
 
 export const Context = createContext<AnswersContext | undefined>(undefined);

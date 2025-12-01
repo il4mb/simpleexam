@@ -354,6 +354,7 @@ export default function QuizLeaderboards({ maxItems = 10, showTabs = true }: Lea
             <Stack direction="row" justifyContent="center" alignItems="flex-end" spacing={2} sx={{ width: '100%', userSelect: "none" }} mb={2}>
                 {podiumOrder.map((player, index) => (
                     <MotionPaper
+                        key={player.uid}
                         initial={{
                             y: 100
                         }}
