@@ -2,9 +2,8 @@
 
 import Welcome from '@/components/Welcome';
 import { useCreateEvents } from '@/hooks/useCreateEvents';
-import { mainPersistence, ydoc } from '@/libs/yjs';
+import { mainPersistence } from '@/libs/yjs';
 import { User } from '@/types';
-import { promises } from 'dns';
 import { nanoid } from 'nanoid';
 import { enqueueSnackbar } from 'notistack';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';

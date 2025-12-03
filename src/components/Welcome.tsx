@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Container, Paper, Stack, TextField, Typography, Button } from '@mui/material';
-import {  AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { ArrowForward } from '@mui/icons-material';
 import AvatarEditorCompact from './avatars/AvatarEditorCompact';
 import { mainPersistence } from '@/libs/yjs';
@@ -43,7 +43,7 @@ export default function Welcome({ onComplete }: { onComplete?: () => void }) {
             } as any);
             setError('');
             onComplete?.();
-            
+
         } catch (err: any) {
             console.warn('Failed to save name to localStorage:', err);
             enqueueSnackbar(err.message || "Caught an Error", { variant: "error" });
@@ -109,7 +109,9 @@ export default function Welcome({ onComplete }: { onComplete?: () => void }) {
                             {/* Form */}
                             <form onSubmit={handleSubmit}>
                                 <Stack spacing={3}>
-                                    <AvatarEditorCompact seed={avatar} onChange={setAvatar} />
+                                    <AvatarEditorCompact
+                                        seed={avatar}
+                                        onChange={setAvatar} />
                                     <TextField
                                         label="Nama Kamu"
                                         value={name || ''}

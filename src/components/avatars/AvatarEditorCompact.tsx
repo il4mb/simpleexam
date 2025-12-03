@@ -11,7 +11,7 @@ export interface AvatarEditorCompactProps {
     onChange?: (seed: string) => void;
 
 }
-export default function AvatarEditorCompact({ seed: externalSeed, onChange }: AvatarEditorCompactProps) {
+export default function AvatarEditorCompact({ seed: externalSeed = randomString(), onChange }: AvatarEditorCompactProps) {
 
     const ignoreRef = useRef(false);
     const [seed, setSeed] = useState(randomString);
