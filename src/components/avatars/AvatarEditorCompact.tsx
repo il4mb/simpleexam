@@ -11,7 +11,7 @@ export interface AvatarEditorCompactProps {
     onChange?: (seed: string) => void;
 
 }
-export default function AvatarEditorCompact({ seed: externalSeed = randomString(), onChange }: AvatarEditorCompactProps) {
+export default function AvatarEditorCompact({ seed: externalSeed, onChange }: AvatarEditorCompactProps) {
 
     const ignoreRef = useRef(false);
     const [seed, setSeed] = useState(randomString);
@@ -28,7 +28,11 @@ export default function AvatarEditorCompact({ seed: externalSeed = randomString(
     }, [onChange]);
 
     useEffect(() => {
-        if (!externalSeed) return;
+        if (!externalSeed) {
+            ignoreRef.current = true;
+            setSeed(randomString());
+            return;
+        }
         if (ignoreRef.current) {
             ignoreRef.current = false;
             return;
