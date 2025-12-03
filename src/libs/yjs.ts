@@ -4,7 +4,7 @@ import { WebsocketProvider } from 'y-websocket';
 
 if(!window) throw new Error();
 
-export const WEBSOCKET_HOST = `ws://${process.env.NEXT_PUBLIC_WEBSOCKET || window.location.hostname}:${process.env.NEXT_PUBLIC_PORT}`;
+export const WEBSOCKET_HOST = `ws://${process.env.NEXT_PUBLIC_WEBSOCKET || window.location.hostname}:${process.env.NEXT_PUBLIC_WEBSOCKET_PORT}`;
 
 export const ydoc = new Y.Doc();
 export const mainPersistence = new IndexeddbPersistence('Quezy-main', ydoc);
