@@ -5,9 +5,8 @@ import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 're
 import { useRoomManager } from './RoomManager';
 import * as Y from "yjs";
 import { useCurrentUser } from './SessionProvider';
-import { getYType, useYArray, useYMap } from '@/hooks/useY';
+import { getYType } from '@/hooks/useY';
 import { enqueueSnackbar } from 'notistack';
-import { ydoc } from '@/libs/yjs';
 
 export interface ParticipantsProviderProps {
     children?: ReactNode;
@@ -28,9 +27,25 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
         return partsMap as Y.Map<Participant>;
     }, [yRoom]);
 
-    const participantsMap = useYMap<Record<string, Participant>>(yParticipants as any);
+    const [participantsMap, setParticipantsMap] = useState<Record<string, Participant>>({});
+    
+    // Subscribe to Y.Map changes
+    useEffect(() => {
+        const updateMap = () => {
+            setParticipantsMap(yParticipants.toJSON() as Record<string, Participant>);
+        };
+        
+        updateMap(); // Initial update
+        yParticipants.observe(updateMap);
+        
+        return () => {
+            yParticipants.unobserve(updateMap);
+        };
+    }, [yParticipants]);
+
     const participants = useMemo<Participant[]>(() => Object.values(participantsMap), [participantsMap]);
     const isTabActiveRef = useRef<boolean>(true);
+    const wasLeftRef = useRef<boolean>(false); // Track if user was previously left
     const pendingParticipants = useMemo(() => participants.filter(p => p.status === 'pending'), [participants]);
     const activeParticipants = useMemo(() => participants.filter(p => p.status === 'active'), [participants]);
     const leftParticipants = useMemo(() => participants.filter(p => p.status === 'left'), [participants]);
@@ -60,6 +75,26 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
                 const participant = yParticipants.get(userId);
                 if (participant?.status == "active") {
                     yParticipants.set(userId, { ...participant, status: "left" })
+                    // Set flag when user leaves
+                    if (userId === user?.id) {
+                        wasLeftRef.current = true;
+                    }
+                }
+            }
+        });
+    }, [yParticipants, user?.id]);
+
+    const rejoinUser = useCallback((userId: string) => {
+        yRoom.doc?.transact(() => {
+            if (yParticipants.has(userId)) {
+                const participant = yParticipants.get(userId);
+                if (participant?.status == "left") {
+                    yParticipants.set(userId, { 
+                        ...participant, 
+                        status: "active",
+                        lastSeen: Date.now()
+                    });
+                    wasLeftRef.current = false;
                 }
             }
         });
@@ -123,8 +158,13 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
         yRoom.doc?.transact(() => {
             if (yParticipants.has(userId)) {
                 const participant = yParticipants.get(userId);
-                if (participant && participant.status != "pending") {
-                    yParticipants.set(userId, { ...participant, lastSeen: Date.now() })
+                if (participant) {
+                    yParticipants.set(userId, { 
+                        ...participant, 
+                        lastSeen: Date.now(),
+                        // If user was left and now active, rejoin them
+                        status: participant.status === "left" ? "active" : participant.status
+                    });
                 }
             }
         });
@@ -135,17 +175,32 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
         const thirtySecondsAgo = now - 30000;
 
         yRoom.doc?.transact(() => {
-            const participants = Object.values(yParticipants.toJSON()) as Participant[];
-            for (const user of participants) {
-                if (user.status === 'active' && user.lastSeen < thirtySecondsAgo) {
-                    yParticipants.set(user.id, {
-                        ...user,
+            const participants = Array.from(yParticipants.values());
+            for (const participant of participants) {
+                if (participant.status === 'active' && 
+                    participant.lastSeen < thirtySecondsAgo) {
+                    yParticipants.set(participant.id, {
+                        ...participant,
                         status: "left"
                     });
                 }
             }
         });
     }, [yParticipants]);
+
+    // Handle rejoin when tab becomes active again
+    const handleTabActive = useCallback(() => {
+        if (!user?.id) return;
+        
+        // Update last seen immediately
+        updateLastSeen(user.id);
+        
+        // Check if user was marked as left and rejoin them
+        const currentParticipant = yParticipants.get(user.id);
+        if (currentParticipant?.status === 'left') {
+            rejoinUser(user.id);
+        }
+    }, [user?.id, updateLastSeen, rejoinUser, yParticipants]);
 
     // Consolidated version
     useEffect(() => {
@@ -186,25 +241,33 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
         setupIntervals();
 
         const handleVisibilityChange = () => {
+            const wasActive = isTabActiveRef.current;
             isTabActiveRef.current = !document.hidden;
 
             if (!document.hidden) {
-                // Tab became active - update immediately
-                updateLastSeen(user.id);
+                // Tab became active - handle rejoin
+                handleTabActive();
+            } else if (wasActive) {
+                // Tab became inactive - mark as left after a delay
+                setTimeout(() => {
+                    if (!isTabActiveRef.current && user?.id) {
+                        leftUser(user.id);
+                    }
+                }, 30000); // Mark as left after 30 seconds of inactivity
             }
 
             setupIntervals(); // Restart intervals based on new visibility state
         };
 
         const handleUserInteraction = () => {
-            if (isTabActiveRef.current) {
+            if (isTabActiveRef.current && user?.id) {
                 updateLastSeen(user.id);
             }
         };
 
         // Add event listeners
         document.addEventListener('visibilitychange', handleVisibilityChange);
-        const events = ['click', 'keydown', 'mousemove'];
+        const events = ['click', 'keydown', 'mousemove', 'touchstart'];
         events.forEach(event => {
             window.addEventListener(event, handleUserInteraction, { passive: true });
         });
@@ -218,7 +281,7 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
                 window.removeEventListener(event, handleUserInteraction);
             });
         };
-    }, [user?.id, updateLastSeen, checkInactiveUsers]);
+    }, [user?.id, updateLastSeen, checkInactiveUsers, handleTabActive, leftUser]);
 
 
     useEffect(() => {
@@ -226,32 +289,69 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
 
         const addUserToParticipants = () => {
             yRoom.doc?.transact(() => {
-
                 const existing = yParticipants.get(user.id);
+                
                 if (isHost) {
-                    yParticipants.set(user.id, { ...user, status: "active", lastSeen: Date.now() } as Participant);
+                    // Host is always active
+                    yParticipants.set(user.id, { 
+                        ...user, 
+                        status: "active", 
+                        lastSeen: Date.now() 
+                    } as Participant);
                 } else {
-                    if (existing?.id && existing.status != "pending") {
-                        yParticipants.set(user.id, { ...user, status: "active", lastSeen: Date.now() } as Participant);
+                    if (existing?.id) {
+                        // User exists - check status
+                        if (existing.status === "left") {
+                            // User was left, rejoin them
+                            yParticipants.set(user.id, { 
+                                ...user, 
+                                status: "active", 
+                                lastSeen: Date.now() 
+                            } as Participant);
+                            wasLeftRef.current = false;
+                        } else if (existing.status === "pending") {
+                            // Keep as pending
+                            yParticipants.set(user.id, { 
+                                ...user, 
+                                status: "pending", 
+                                lastSeen: Date.now() 
+                            } as Participant);
+                        } else {
+                            // Already active
+                            yParticipants.set(user.id, { 
+                                ...user, 
+                                status: "active", 
+                                lastSeen: Date.now() 
+                            } as Participant);
+                        }
                     } else {
-                        yParticipants.set(user.id, { ...user, status: "pending", lastSeen: Date.now() } as Participant);
+                        // New user - add as pending
+                        yParticipants.set(user.id, { 
+                            ...user, 
+                            status: "pending", 
+                            lastSeen: Date.now() 
+                        } as Participant);
                     }
                 }
             });
         };
 
-
         addUserToParticipants();
         setMounted(true);
 
-        const handleBeforeUnload = () => leftUser(user.id);
+        const handleBeforeUnload = () => {
+            if (user.id) {
+                leftUser(user.id);
+            }
+        };
+        
         window.addEventListener('beforeunload', handleBeforeUnload);
 
         return () => {
             handleBeforeUnload();
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
-    }, [user, yParticipants, isHost, yRoom]);
+    }, [user, yParticipants, isHost, yRoom, leftUser]);
 
     const values = useMemo(() => ({
         // All unique participants
@@ -264,6 +364,7 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
         getParticipant,
         removeUser,
         leftUser,
+        rejoinUser,
         // Host-only actions
         approveUser,
         rejectUser,
@@ -285,6 +386,7 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
         getParticipant,
         removeUser,
         leftUser,
+        rejoinUser,
         approveUser,
         rejectUser,
         autoApproveAll,
@@ -292,11 +394,11 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
 
     if (!mounted) return false;
 
-    // Updated logic: Users who left and return should not be pending
+    // Updated logic for handling user status
     if (!currentUserParticipant) {
         return <KickedOut room={room} />;
     } else if (user && !isHost && isUserPending &&
-        // Only show pending joint if user was never active before
+        // Only show pending joint if user was never active before and was never left
         !participants.some(p => p.id === user.id && (p.status === 'active' || p.status === 'left'))) {
         return <PerndingJoint room={room} pendingCount={pendingParticipants.length} />;
     }
