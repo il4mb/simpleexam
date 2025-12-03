@@ -2,7 +2,7 @@
 
 import { MotionPaper, MotionBox, MotionChip } from '@/components/motion';
 import { useRoomManager } from '@/contexts/RoomManager';
-import { RocketLaunch, Pause, PlayArrow, Stop, ContentCopy, LeaderboardRounded, VideoCameraFront } from '@mui/icons-material';
+import { RocketLaunch, Pause, PlayArrow, Stop, ContentCopy, LeaderboardRounded, VideoCameraFront, ExitToApp } from '@mui/icons-material';
 import { Box, Button, Chip, Stack, Typography, IconButton, alpha, Container, CircularProgress } from '@mui/material';
 import { Crown } from 'lucide-react';
 import { useTheme } from '@mui/material/styles';
@@ -13,6 +13,7 @@ import Tooltip from '../Tooltip';
 import RoomQRButton from './RoomQRButton';
 import { AnimatePresence } from 'framer-motion';
 import { useParticipants } from '@/hooks/useParticipants';
+import { useRouter } from 'next/navigation';
 
 export interface QuizHeaderProps {
 
@@ -20,6 +21,7 @@ export interface QuizHeaderProps {
 export default function RoomHeader({ }: QuizHeaderProps) {
 
     const theme = useTheme();
+    const router = useRouter();
     const { activeParticipants } = useParticipants();
     const { room, isHost, updateRoom } = useRoomManager();
     const totalActiveParticipants = activeParticipants.length;
@@ -92,6 +94,12 @@ export default function RoomHeader({ }: QuizHeaderProps) {
         updateRoom("status", "ended");
         enqueueSnackbar("Kuis diakhiri", { variant: "info" });
     }, [room.status]);
+
+    const handleExitRoom = useCallback(() => {
+        // You can add any cleanup logic here before exiting
+        enqueueSnackbar("Anda telah keluar dari ruangan", { variant: "info" });
+        router.push('/'); // Navigate to home or lobby page
+    }, [router]);
 
     const getMainActionButton = () => {
         switch (room.status) {
@@ -339,7 +347,7 @@ export default function RoomHeader({ }: QuizHeaderProps) {
                             </Stack>
 
                             {/* Host Actions */}
-                            {isHost && (
+                            {isHost ? (
                                 <MotionBox
                                     initial={{ scale: 0.9, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1 }}
@@ -366,6 +374,48 @@ export default function RoomHeader({ }: QuizHeaderProps) {
                                         </Stack>
                                     </Stack>
                                 </MotionBox>
+                            ) : (
+                                // Non-Host Actions
+                                <MotionBox
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    transition={{ delay: 0.2 }}>
+                                    <Stack direction="row" spacing={2} alignItems="center">
+                                        <Tooltip title={"Salin Kode Ruangan"}>
+                                            <IconButton
+                                                onClick={shareRoom}
+                                                sx={{
+                                                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                                    '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.2) },
+                                                    borderRadius: 2,
+                                                }}>
+                                                <ContentCopy fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                        
+                                        <Tooltip title={"Keluar dari Ruangan"}>
+                                            <Button
+                                                onClick={handleExitRoom}
+                                                variant="outlined"
+                                                size="large"
+                                                startIcon={<ExitToApp />}
+                                                sx={{
+                                                    borderRadius: 3,
+                                                    px: 3,
+                                                    py: 1.5,
+                                                    fontWeight: 'bold',
+                                                    borderColor: theme.palette.error.main,
+                                                    color: theme.palette.error.main,
+                                                    '&:hover': {
+                                                        backgroundColor: alpha(theme.palette.error.main, 0.1),
+                                                        borderColor: theme.palette.error.dark,
+                                                    },
+                                                }}>
+                                                Keluar
+                                            </Button>
+                                        </Tooltip>
+                                    </Stack>
+                                </MotionBox>
                             )}
                         </Stack>
                     </Stack>
@@ -373,4 +423,4 @@ export default function RoomHeader({ }: QuizHeaderProps) {
             </MotionPaper>
         </Box>
     );
-}   
+}
