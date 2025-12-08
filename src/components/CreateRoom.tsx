@@ -97,7 +97,6 @@ export default function CreateRoom() {
                 currentPlayers: 0
             }
 
-            // Fixed Firestore reference
             const roomsCollection = collection(firestore, "rooms");
             await setDoc(doc(roomsCollection, finalRoomData.id), finalRoomData);
             mainPersistence.set("room", finalRoomData as any);

@@ -13,9 +13,5 @@ export default function layout({ children }: layoutProps) {
         }
     }, []);
 
-    return (
-        <>
-            {children}
-        </>
-    );
+    return children;
 }

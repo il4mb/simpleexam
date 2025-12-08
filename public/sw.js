@@ -3,7 +3,6 @@ const CACHE_NAME = "edudoexam-cache-v1";
 // daftar asset yang dicache ketika install
 const ASSETS = [
     "/",
-    "/manifest.json",
     "/icon-192x192.png",
     "/icon-512x512.png",
     "/mp3/quiz-master.mp3",

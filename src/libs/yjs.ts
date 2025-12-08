@@ -2,9 +2,9 @@ import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import { WebsocketProvider } from 'y-websocket';
 
-if(!window) throw new Error();
+if (!window) throw new Error();
 
-export const WEBSOCKET_HOST = `wss://socket.edudoexam.com`;
+export const WEBSOCKET_HOST = `ws://${window.location.host.replace(/\:.*/, ':3020')}`;
 
 export const ydoc = new Y.Doc();
 export const mainPersistence = new IndexeddbPersistence('Quezy-main', ydoc);

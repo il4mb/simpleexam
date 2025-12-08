@@ -7,10 +7,11 @@ import { mainPersistence } from '@/libs/yjs';
 import { enqueueSnackbar } from 'notistack';
 import { nanoid } from 'nanoid';
 import { MotionPaper } from './motion';
+import { randomBytes } from 'crypto';
 
 export default function Welcome({ onComplete }: { onComplete?: () => void }) {
 
-    const [avatar, setAvatar] = useState<string>();
+    const [avatar, setAvatar] = useState<string>(randomBytes(12).toString("hex"));
     const [name, setName] = useState<string>('');
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
