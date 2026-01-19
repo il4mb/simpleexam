@@ -152,7 +152,7 @@ export default function QuizHostPrepared() {
                             • Pastikan semua peserta telah bergabung ke ruang
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                            • Peserta harus menekan tombol "Siap" sebelum kuis dimulai
+                            • Peserta harus menekan tombol {"\"Siap\""} sebelum kuis dimulai
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                             • Anda dapat melanjutkan kuis meskipun tidak semua peserta siap

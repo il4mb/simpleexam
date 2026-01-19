@@ -159,9 +159,12 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
             if (yParticipants.has(userId)) {
                 const participant = yParticipants.get(userId);
                 if (participant) {
+                    const now = Date.now();
+                    // Only update lastSeen if it changed sufficiently to reduce YDoc writes
+                    if (now - (participant.lastSeen || 0) < 10000) return;
                     yParticipants.set(userId, { 
                         ...participant, 
-                        lastSeen: Date.now(),
+                        lastSeen: now,
                         // If user was left and now active, rejoin them
                         status: participant.status === "left" ? "active" : participant.status
                     });
@@ -172,13 +175,13 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
 
     const checkInactiveUsers = useCallback(() => {
         const now = Date.now();
-        const thirtySecondsAgo = now - 30000;
+        const sixtySecondsAgo = now - 60000;
 
         yRoom.doc?.transact(() => {
             const participants = Array.from(yParticipants.values());
             for (const participant of participants) {
                 if (participant.status === 'active' && 
-                    participant.lastSeen < thirtySecondsAgo) {
+                    participant.lastSeen < sixtySecondsAgo) {
                     yParticipants.set(participant.id, {
                         ...participant,
                         status: "left"
@@ -229,8 +232,8 @@ export default function ParticipantsProvider({ children, yRoom }: ParticipantsPr
             if (isTabActiveRef.current) {
                 // Update lastSeen every 15 seconds
                 lastSeenIntervalId = setInterval(updateIfTabActive, 15000);
-                // Check inactive users every 30 seconds
-                inactivityCheckIntervalId = setInterval(checkInactiveIfTabActive, 30000);
+                // Check inactive users every 60 seconds (reduced frequency)
+                inactivityCheckIntervalId = setInterval(checkInactiveIfTabActive, 60000);
 
                 // Initial update
                 updateLastSeen(user.id);

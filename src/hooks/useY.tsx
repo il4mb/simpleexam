@@ -63,3 +63,22 @@ export function getYType(yObject: any) {
     if (yObject instanceof Y.Text) return 'YText';
     return false;
 }
+
+export function useYMapKey<T>(yMap: Y.Map<any> | undefined, key: string): T | undefined {
+    const cacheRef = useRef<T | undefined>(yMap ? (yMap.get(key) as T) : undefined);
+
+    const subscribe = useCallback((callback: () => void) => {
+        if (!yMap) return () => {};
+        const observer = (event: Y.YMapEvent<any>) => {
+            if (event.keysChanged && event.keysChanged.has(key)) {
+                cacheRef.current = yMap.get(key) as T | undefined;
+                callback();
+            }
+        };
+        yMap.observe(observer);
+        return () => yMap.unobserve(observer);
+    }, [yMap, key]);
+
+    const getSnapshot = () => cacheRef.current;
+    return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}

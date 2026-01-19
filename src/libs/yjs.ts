@@ -4,7 +4,8 @@ import { WebsocketProvider } from 'y-websocket';
 
 if (!window) throw new Error();
 
-export const WEBSOCKET_HOST = `ws://${window.location.host.replace(/\:.*/, ':3020')}`;
+const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+export const WEBSOCKET_HOST = `${protocol}://${window.location.host}`; // will connect to ws://host/<room>
 
 export const ydoc = new Y.Doc();
 export const mainPersistence = new IndexeddbPersistence('Quezy-main', ydoc);

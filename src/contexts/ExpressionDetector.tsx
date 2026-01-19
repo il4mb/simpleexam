@@ -49,14 +49,20 @@ export default function ExpressionDetector({ children }: { children?: ReactNode 
     }, []);
 
     useEffect(() => {
+        // Reset local buffer whenever relevant context changes
         bufferRef.current = Array(EXPRESSIONS.length).fill(0);
-        if (room.status !== "playing") return;
-        const syncInterval = setInterval(() => {
+
+        let syncInterval: NodeJS.Timeout | null = null;
+
+        const syncNow = () => {
             const yRecord = getOrCreateRecord();
             if (!yRecord) return;
 
             const buf = bufferRef.current;
-            yRecord?.doc?.transact(() => {
+            // Avoid noisy writes when there's nothing detected
+            if (buf.every(v => v === 0)) return;
+
+            yRecord.doc?.transact(() => {
                 let ybuf = yRecord.get("buffer") as Y.Array<number>;
                 if (!ybuf) {
                     ybuf = new Y.Array();
@@ -65,12 +71,23 @@ export default function ExpressionDetector({ children }: { children?: ReactNode 
                 if (ybuf.length > 0) ybuf.delete(0, ybuf.length);
                 ybuf.insert(0, [...buf]);
 
-                console.log("SYNC", buf);
+                // Add a timestamp to help hosts detect fresh updates
+                yRecord.set("lastUpdated", Date.now());
             });
-        }, 5000);
+        };
 
-        return () => clearInterval(syncInterval);
-    }, [getOrCreateRecord]);
+        if (room.status === "playing") {
+            // Flush immediately when entering playing and then every 5s
+            syncNow();
+            syncInterval = setInterval(syncNow, 5000);
+        }
+
+        return () => {
+            if (syncInterval) clearInterval(syncInterval);
+            // Final attempt to persist remaining counts
+            syncNow();
+        };
+    }, [getOrCreateRecord, room.status, question?.id, user?.id]);
 
     useEffect(() => {
         return addEventListener("expressionDetected", handleOnExpDetected);

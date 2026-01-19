@@ -50,7 +50,7 @@ export default function QuizProvider({ children, yRoom }: QuizProviderProps) {
     const jointQuizUids = useYArray(yJointQuizUid);
     const isCurrentUserJoined = useMemo(() => Boolean(currentUser && jointQuizUids.includes(currentUser.id)), [currentUser?.id, jointQuizUids]);
     const totalQuizableParticipant = useMemo(() => activeParticipants.filter(p => p.id != room.createdBy).length, [room, activeParticipants]);
-    const canPlayQuiz = useMemo(() => totalQuizableParticipant >= 3 && questions.length >= 5, [totalQuizableParticipant]);
+    const canPlayQuiz = useMemo(() => totalQuizableParticipant >= 3 && questions.length >= 3, [totalQuizableParticipant]);
 
     const transitionDelay = useMemo(() => room.enableLeaderboard ? 8000 : 4000, [room.enableLeaderboard]);
     const autoPlay = room.autoPlay === true;
